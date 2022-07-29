@@ -1,0 +1,188 @@
+{smcl}
+{* 28July2022}{...}
+{cmd:help xtmdqr}
+{hline}
+
+{title:Title}
+
+{p2colset 5 14 16 2}{...}
+{p2col :{hi:xtmdqr} {hline 2}}Fixed-, between-, and random-effects quantile regression{p_end}
+{p2colreset}{...}
+
+
+{title:Syntax}
+
+{p 8 16 2}{cmd:xtreg} {depvar} [{indepvars}] {ifin}
+[{cmd:, re} {it:{help xtreg##reoptions:RE_options}}]
+
+{p 8 17 2}
+{cmd:xtmdqr} {depvar} [{indepvars}] {ifin} 
+		[{it:{help mdqr##weight:weight}}] [{cmd:,} re fe be q:uantiles(numlist) [{it:{help xtmdqr##options:options}}]
+
+{synoptset 35 tabbed}{...}
+{synoptline}
+{syntab :Model}
+{synopt :{opt re}}use random-effects estimator; the default{p_end}
+{synopt :{opt fe}}use fixed-effects estimator{p_end}
+{synopt :{opt be}}use between-effects estimator{p_end}
+{synopt:{opth q:uantiles(numlist)}}quantile indexes at which the regressions will be estimated{p_end}
+
+{marker options}{...}
+{syntab :Other options}
+{p 6 6}
+All the options of {help mdqr} can also be set with {cmd:xtmdqr} with the 
+exception of {opt group(varlist)}, which is automatically set by {help xtset}. For details about these options, see {help mdqr##options}.
+
+{synoptline}
+{p 4 6 2}{it:indepvars} may 
+contain factor variables; see {help fvvarlist}.{p_end}
+{marker weight}{...}
+{p 4 6 2}{cmd:pweight}s are allowed except when the bootstrap is used to estimate the variance; see {help weight}.{p_end}
+{p 4 6 2} A panel variable must be specified. Use {help xtset}. {p_end}
+
+{title:Description}
+
+{pstd}
+{cmd:xtmdqr} computes the quantile analogs of the random effects, fixed effects,
+and between estimators for panel data. These estimators
+have been suggested in Melly and Pons (2022).
+
+{pstd}
+{cmd:xtmdqr} is a simply wrapper for the more general {help mdqr} command.
+A panel variable must be specified, see {help xtset}.
+The panel variable is automatically used as the grouping variable when {cmd:mdqr}
+is called.
+
+{pstd}
+{cmd:xtmdqr} fits quantile regression models to panel data.  In
+particular, {cmd:xtmdqr} with the {opt re} option fits random-effects models; 
+with the {opt fe} option, it fits fixed-effects models; and with the
+{opt be} option, it fits betwee-effects models. Only one of {opt re},
+{opt fe}, and {opt be} can be activated. If none is activated, the
+random effects estimator is applied.
+
+{title:Options}
+
+{dlgtab:Model}
+
+{phang}
+{opt re}, the default, requests the random-effects estimator. This estimator
+exploits both the within-individuals and between-individuals variation
+in {it:indepvars}.
+
+{phang}
+{opt fe} requests the fixed-effects estimator. This estimator exploits only
+the variation within individuals to estimate the effect of {it:indepvars}.
+
+{phang}
+{opt be} requests the between estimator. This estimator exploits only
+the variation between individuals to estimate the effect of {it:indepvars}.
+
+{phang} {opt quantiles(numlist)} specifies the quantiles at which the effects
+are estimated and should contain numbers between 0 and 1.  By default, {cmd:quantiles()} is
+set to "0.1 0.25 0.5 0.75 0.9".
+
+{marker examples}{...}
+{title:Example with artificial data}
+
+{pstd}We generate artifical data.{p_end}
+{phang2}. {stata clear}{p_end}
+{phang2}. {stata set seed 12345}{p_end}
+{pstd}We generate data for 100 individuals.{p_end}
+{phang2}. {stata set obs 100}{p_end}
+{phang2}. {stata generate gid = _n}{p_end}
+{pstd}The individual effects are independent: re, fe and be are consistent.{p_end}
+{phang2}. {stata generate alpha = rnormal()}{p_end}
+{pstd}We generate data for 20 periods.{p_end}
+{phang2}. {stata expand 20}{p_end}
+{phang2}. {stata generate x = rnormal()}{p_end}
+{pstd}We generate the outcome variable.{p_end}
+{phang2}. {stata generate y = x + alpha + rnormal() * (1 + x * 0.2)}{p_end}
+{pstd}The true quantile treatment effects at the 0.1, 0.25, 0.5, 0.75 and 0.9 quantiles:{p_end}
+{phang2}. {stata "mata: 1:+invnormal((0.1, 0.25, 0.5, 0.75, 0.9)):*0.2"}{p_end}
+{pstd}We declare the data to be panel data.{p_end}
+{phang2}. {stata xtset gid}{p_end}
+{pstd}We compute the fixed-effects estimator.{p_end}
+{phang2}. {stata xtmdqr y x, fe}{p_end}
+{pstd}We compute the between estimator.{p_end}
+{phang2}. {stata xtmdqr y x, be}{p_end}
+{pstd}We compute the random effects estimator.{p_end}
+{phang2}. {stata xtmdqr y x}{p_end}
+
+{title:Saved results}
+
+{phang}{cmd:ivqte} saves the following in {cmd:e()}:
+
+{synoptset 15 tabbed}{...}
+{p2col 5 15 19 2: Scalars}{p_end}
+{synopt:{cmd:e(N)}}number of observations{p_end}
+{synopt:{cmd:e(N_groups)}}number of groups{p_end}
+
+{phang}Macros{p_end}
+{synopt:{cmd:e(command)}}{cmd:mdqr}{p_end}
+{synopt:{cmd:e(cmdline)}}command as typed{p_end}
+{synopt:{cmd:e(title)}}Minimum distance quantile Regression{p_end}
+{synopt:{cmd:e(depvar)}}name of dependent variable{p_end}
+{synopt:{cmd:e(xvar)}}name of the regressor(s){p_end}
+{synopt:{cmd:e(vce)}}vce type{p_end}
+{synopt:{cmd:e(method)}}2nd stage estimation command{p_end}
+{synopt:{cmd:e(clustvar)}}name of cluster variable{p_end}
+{synopt:{cmd:e(wtype)}}weight type{p_end}
+{synopt:{cmd:e(wexp)}}weight expression{p_end}
+
+{phang}Matrices{p_end}
+{p2col 5 20 19 2: let {it:k} be the number of regressors and {it:nq} be the number of quantile regressions}{p_end}
+{synopt:{cmd:e(quantiles)}}estimated quantile(s); {it:nq} column vector{p_end}
+{synopt:{cmd:e(b)}}coefficient vector; ({it:k}*{it:nq}) column vector{p_end}
+{synopt:{cmd:e(V)}}variance-covariance matrix of the estimators; ({it:k}*{it:nq}) by ({it:k}*{it:nq}) matrix{p_end}
+{synopt:{cmd:e(coefmat)}}matrix of coefficients; ({it:k} by {it:nq}) matrix{p_end}
+
+{synoptset 15 tabbed}{...}
+{p2col 5 15 19 2: Functions}{p_end}
+{synopt:{cmd:e(sample)}}marks the estimation sample{p_end}
+
+
+{title:Version requirements}
+
+{pstd}This command requires Stata 9.2 or later.  Stata 11 is required to use
+factor variables.  {cmd:qrprocess} is required; type {cmd:net install qrprocess, from("https://sites.google.com/site/mellyblaise/")}
+to install this package. Finally, {cmd:qrprocess}
+itself requires the package {cmd:moremata} (see Jann [2005b]). 
+Type {cmd:ssc install moremata} to install it.
+
+
+{title:Methods and formulas}
+
+{pstd} See Melly and Pons (2022).
+
+
+{title:References}
+
+
+{phang} Melly, B., and M. Pons. 2022. Minimum Distance Estimation of Quantile 
+Panel Data Models. {it:Working paper}. 
+{browse "http://martinapons.github.io/files/MD.pdf":http:/martinapons.github.io/files/MD.pdf}
+
+
+{phang} Jann, B. 2005b. moremata: Stata module (Mata) to provide various 
+functions. Statistical Software Components S455001, Department of Economics, 
+Boston College. {browse "http://ideas.repec.org/c/boc/bocode/s455001.html":http://ideas.repec.org/c/boc/bocode/s455001.html}.
+
+
+{title:Authors}
+
+{pstd}Blaise Melly{p_end}
+{pstd}Department of Economics{p_end}
+{pstd}Bern University{p_end}
+{pstd}Bern, Switzerland{p_end}
+{pstd}blaise.melly@unibe.ch{p_end}
+
+{pstd}Martina Pons{p_end}
+{pstd}Department of Economics{p_end}
+{pstd}Bern University{p_end}
+{pstd}Bern, Switzerland{p_end}
+{pstd}martina.pons@unibe.ch{p_end}
+
+{pstd}Please feel free to share your comments,
+report bugs, and propose extensions.
+

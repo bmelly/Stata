@@ -1,0 +1,389 @@
+{smcl}
+{* 27July2022}{...}
+{cmd:help mdqr}
+{hline}
+
+{title:Title}
+
+{p2colset 5 14 16 2}{...}
+{p2col :{hi:mdqr} {hline 2}}Minimum distance quantile regression{p_end}
+{p2colreset}{...}
+
+
+{title:Syntax}
+
+{p 8 17 2}
+{cmd:mdqr} {depvar} [{it:{help varlist:varlist1}}]
+{cmd:(}{it:{help varlist:varlist2}} {cmd:=}
+        {it:{help varlist:varlist_iv}}{cmd:)} {ifin} 
+		[{it:{help mdqr##weight:weight}}] {cmd:,} {opth g:roup(varlist:groupvar)}  [{it:{help mdqr##options:options}}]
+
+{phang}
+{it:varlist1} is the list of exogenous (time-varying or time-constant) variables.{p_end}
+
+{phang}
+{it:varlist2} is the list of endogenous (time-varying or time-constant) variables.{p_end}
+
+{phang}
+{it:varlist_iv} is the list of excluded exogenous variables used 
+   as instruments for {it:varlist2}.
+
+
+{synoptset 35 tabbed}{...}
+{marker options}{...}
+{synopthdr :options}
+{synoptline}
+{syntab :Group}
+{synopt:{opth g:roup(varlist:groupvar)}}variables defining the groups (or individuals){p_end}
+{synopt:{opth n_small(#)}}exclude groups with a small number of observations{p_end}
+
+{syntab :First stage estimation}
+{synopt:{opth q:uantiles(numlist)}}quantile indexes at which the regressions will be estimated{p_end}
+{synopt:{opt qr_opts(options)}}options that are passed to {help qrprocess}{p_end}
+{synopt:{opt s:ave_first(newvarname)}}create variables containing the quantile regression estimates{p_end}
+{synopt:{opt l:oad_first(varname)}}provide variables containing the quantile regression estimates{p_end}
+
+{syntab:Second stage estimation}
+{synopt:{opt e:st_command(command)}}specify the command used in the second stage{p_end}
+{synopt:{opt est_opts(options)}}options that are passed to the command defined by {cmd:est_command}{p_end}
+
+{syntab:Inference}
+{synopt:{opt c:luster(varname:clustvar}}specify that the standard errors allow for intracluster correlation{p_end}
+{synopt:{opt boot:strap(string:string)}}specify the {help bootstrap} prefix used in the second stage{p_end}
+
+{syntab:Reporting}
+{synopt:{opt le:vel(#)}}set confidence level; default is {cmd:level(95)}{p_end}
+{synopt :{opt noprint}}suppresses display of the results.{p_end}
+{synoptline}
+{p 4 6 2}{it:varlist1}, {it:varlist2}, and {it:varlist_iv} may 
+contain factor variables; see {help fvvarlist}.{p_end}
+{marker weight}{...}
+{p 4 6 2}{cmd:pweight}s are allowed except when the bootstrap is used to estimate the variance; see {help weight}.{p_end}
+
+{title:Description}
+
+{pstd}
+{cmd:mdqr} computes the minimum distance quantile regression (MDQR) estimator
+suggested in Melly and Pons (2022). This estimator can be applied whenever the data
+has two dimensions. For instance, we may follow the same individuals during
+several periods (classical panel data). Or we may have individual-level data
+but the treatment vary at the county level (grouped data). In both cases, {cmd:mdqr} estimates
+the effect of the regressors on the conditional quantiles of the dependent variable.
+
+{pstd}To simplify the use of the MDQR estimator for panel data, we provide a companion
+command {cmd:xtmdqr} that implements the quantile version of the classical panel 
+data estimators (fixed effects, between, random effects). Therefore, we focus
+in this help file on grouped data application and use the corresponding 
+terminology.
+
+{pstd}The estimator is implemented in two steps. The first stage consists of group-
+level quantile regressions using individual-level covariates at each quantile of 
+interest. In the second stage, the first-stage fitted values are regressed on 
+individual-level and group-level variables. OLS, 2SLS, GMM, and other estimators
+can be used in the second stage.
+
+{pstd}In the first step, the dependent variable is regressed on all
+individual-level variables, i.e. on all variables in {it:varlist1} and
+{it:varlist2} that are not constant within groups. The command finds
+automatically if a variable is constant or not within groups such that
+the user does not need to provide this information. Quantile regression
+is used to estimate the first stage. Therefore, it is assumed that all the variation
+between individuals within groups is exogenous. In principle, it would be possible 
+to implement an estimator with instrumental variable quantile regression in the
+first stage but this would require finding individual-level instrumental variables
+and it would be computationally very costly.
+
+{pstd}Since the first step consists of group-level regressions, we can keep
+only groups where there are at least as many individuals as individual-level
+regressors. By default, groups with at least one remaining degree are kept. It
+is possible to change the cut-off with the option {cmd:n_small(#)}.
+
+{pstd}The second step consists of a regression of the fitted from the first step
+on all the variables in {it:varlist1} and {it:varlist2}. When there are no
+endogenous variables (i.e. {it:varlist2} and {it:varlist_iv} are empty), {help regress}
+is the command used by default. Other commands may be selected with the option
+{cmd:est_command}; for instance, {help areg} or the user-written {cmd:reghdfe}
+are useful when many fixed effects are included in the second-step regression.
+
+{pstd}When there are potentially endogenous variables in {it:varlist2}, 
+instruments must be provided in {it:varlist_iv}. In the case of exact identification,
+the default command is {help ivregress 2sls} but this default can be modified
+with the option {cmd:est_command}. For instance, the user-written {cmd:ivreghdfe}
+are useful when many fixed effects are included in the second-step regression.
+When there are more instruments than endogenous regressors, the default command is
+{help ivregress gmm} with the efficient weighting matrix.
+
+{pstd}By construction, the sampling error of the fitted values from the first stage, 
+which are the dependent values of the second stage, are correlated within groups. 
+Therefore, we must cluster the standard errors at least at the level of the groups. 
+By default, {cmd:mdqr} will provide standard errors clustered at this level.
+The option {cmd:cluster} allows clustering at a higher level than the groups but
+not at a lower level. 
+
+{pstd} By default, the variance is estimated using an analytical estimator. 
+It is possible to use the bootstrap instead with the option {cmd:bootstrap}. 
+The content of this option will be used as a prefix for the second stage estimation.
+Thus, this option could be, for instance, specified as {cmd:bootstrap(bootstrap, reps(100))}.
+The bootrap will always be clustered at the level of the groups or at a higher level
+if the option {cmd:cluster} is specified. 
+
+{pstd}For the moment, the covariance betweem quantiles has not been implemented.
+Since Stata does not allow for missing values in the estimated variance matrix,
+we have set arbitrarily these covariance to zero, which is not correct. It implies
+that the user should not use these results to test hypothesis that concern
+several quantiles. 
+
+{pstd}The most computationally intensive step is the first step. The
+same first step estimates can be used for several specifications in the 
+second step. For this reason, we have implemented the option {cmd:save_first},
+which allows saving the fitted values from the first stage. Later it is then
+possible to estimate only the second step by providing the previously estimated
+results with the option {cmd:load_first}.
+
+
+{title:Options}
+
+{dlgtab:Group}
+
+{phang} {opth group(varlist:groupvar)} specifies the variable(s)
+that define the groups. This "option" is required. {it:varlist} may
+contain numeric variables, string variables, or a combination of the two. 
+{p_end}
+
+{phang} {opth n_small(#)} provides the cut-off below which groups are excluded.
+More precisely, {cmd:mdqr} excludes a group when the remaining number of
+degrees of freedom is strictly below {it:n_small}. The remaining number
+of degrees of freedom is equal to the number of observations in the group
+minus the number of time-varying regressors minus one (for the intercept).
+By default, {cmd:n_small(1)}.
+
+{dlgtab:First stage estimation}
+
+{phang} {opt quantiles(numlist)} specifies the quantile indexes at which the regressions
+are estimated and should contain numbers between 0 and 1.  By default, {cmd:quantiles()} is
+set to "0.1 0.25 0.5 0.75 0.9".
+
+{phang} {opt qr_opts(options)} allows the user to pass arguments to
+the first stage quantile regression estimation command.
+For instance, it is possible to modify the quantile regression algorithm.
+The syntax must correspond to the options accepted by {help qrprocess}.
+
+{phang} When the option {opt save_first(newvarname)} is specified,
+the first stage fitted values will be saved. {cmd:mdqr} will
+generate as many variables as the number of quantiles provided by
+the option {cmd:quantiles}. The name of these variables is
+provided by the content of the option {opt save_first} plus a 
+quantile index as suffix.
+
+{phang} {opt load_first(varname)} provides the suffix of the variables
+containing the quantile regression estimates from the first stage.
+
+{dlgtab:Second stage estimation}
+
+{phang}
+{opt est_command(command)} specifies the command used in the second stage.
+The default values are (1) {help regress} if there are no endogenous variables,
+(2) {help ivregress 2sls} if there are endogenous variables and the number of instruments
+is equal to the number of endogenous variables, (3) {help ivregress gmm}
+if there are endogenous variables and the number of instruments is larger
+than the number of endogenous variables. Other commands such as
+{help areg} or user-written commands such as {cmd ivreg2}, {cmd reghdfe},
+or {cmd ivreghdfe} can also be used.
+
+{phang}
+{opt est_opts(options)} provides options that will be pass to the command
+provided by {cmd est_comman}. For instance, the option {cmd absorb} must
+be specified when {cmd est_command} is set to {help areg}. Note that the option
+{cmd vce} cannot be modified with this option to make sure that the standard
+errors are clustered at the level of the group or at a higher level. The options
+{cmd bootstrap} or {cmd cluster} can be used to modify the vce method.
+
+{dlgtab:Inference}
+
+{phang}
+{opt cluster(varname:clustvar}}specify that the standard errors allow for intracluster
+correlation. As discussed above, {it clustvar} must nest the groups, that is
+it must be constant within groups. Both the analytical and the bootstrap
+standard errors will take clustering into account.
+
+{phang}
+{opt bootstrap(string:string)} specifies the {help bootstrap} prefix used in the
+second stage. This option must contain the whole prefix as defined in {help bootstrap}.
+This allows, for instance, to change the number of replications. The clustering
+variable cannot be modified with this option. Use the option {cmd cluster}
+instead.
+
+{dlgtab:Reporting}
+
+{phang}
+{opt level(#)} specifies the confidence level, as a percentage, for confidence intervals. The
+default is set by {cmd:set level}; see 
+{helpb estimation options##level():[R] estimation options}.
+
+{phang}
+{opt noprint} prevents the display of the coefficients table.
+ By default, the coefficients table is displayed but it can be extremely voluminous when many quantile regressions are estimated.
+
+{marker examples}{...}
+{title:Examples}
+
+{title:Example 1: no instrument, no second stage fixed effects}
+
+{pstd}We will generate artifical data.{p_end}
+{phang2}. {stata clear}{p_end}
+{phang2}. {stata set seed 1234}{p_end}
+{pstd}Generate 100 groups.{p_end}
+{phang2}. {stata set obs 100}{p_end}
+{phang2}. {stata gen group = _n}{p_end}
+{pstd}Generate a binary treatment variable.{p_end}
+{phang2}. {stata gen treatment = rbinomial(1,0.5)}{p_end}
+{pstd}Generate a group-level variable.{p_end}
+{phang2}. {stata gen g_var = rnormal()}{p_end}
+{pstd}Generate 30 individuals in each group.{p_end}
+{phang2}. {stata expand 30}{p_end}
+{pstd}Generate an individual-level variable.{p_end}
+{phang2}. {stata gen i_var = rnormal()}{p_end}
+{pstd}Generate the outcome.{p_end}
+{phang2}. {stata gen y = 1 + treatment + g_var + i_var + rnormal()*(1 + 0.2 * treatment)}{p_end}
+{pstd}Estimate the quantile treatment effect.{p_end}
+{phang2}. {stata mdqr y i_var g_var treatment, group(group)}{p_end}
+{pstd}Compare with the true treatment effects.{p_end}
+{phang2}. {stata "mata: 1:+invnormal((0.1, 0.25, 0.5, 0.75, 0.9)):*0.2"}{p_end}
+{pstd}Now estimate the results at 19 quantiles and plot the treatment effects.{p_end}
+{phang2}. {stata quietly mdqr y i_var g_var treatment, group(group) quantile(0.05(0.05)0.95)}{p_end}
+{phang2}. {stata plotprocess treatment}{p_end}
+
+{title:Example 2: instrumental variable, no second stage fixed effects}
+
+{phang2}. {stata set seed 2345}{p_end}
+{phang2}. {stata clear}{p_end}
+{pstd}We generate 100 groups{p_end}
+{phang2}. {stata set obs 100}{p_end}
+{phang2}. {stata gen group = _n}{p_end}
+{pstd}We generate the treatment, an instrumental variable, and (unobservable) group effects.{p_end}
+{phang2}. {stata matrix C = (1, .5, 0\ .5, 1, 0.5 \ 0, 0.5, 1)}{p_end}
+{phang2}. {stata drawnorm g_effect treatment instrument, corr(C)}{p_end}
+{pstd}We generate a group-level variable.{p_end}
+{phang2}. {stata gen g_var = rnormal()}{p_end}
+{pstd}We generate 30 individuals in each group.{p_end}
+{phang2}. {stata expand 30}{p_end}
+{pstd}We generate an individual-level variable.{p_end}
+{phang2}. {stata gen i_var = rnormal()}{p_end}
+{pstd}We generate the outcome.{p_end}
+{phang2}. {stata gen y = 1 + treatment + g_var + i_var + g_effect + rnormal()*(1 + 0.2 * treatment)}{p_end}
+{pstd}We estimate the treatment effect without an instrumental variable: the results are inconsistent.{p_end}
+{phang2}. {stata mdqr y i_var g_var treatment, group(group)}{p_end}
+{pstd}We obtain consistent estimates with the instrument:{p_end}
+{phang2}. {stata mdqr y i_var g_var (treatment = instrument), group(group)}{p_end}
+{pstd}Compare with the true quantile treatment effects.{p_end}
+{phang2}. {stata "mata: 1:+invnormal((0.1, 0.25, 0.5, 0.75, 0.9)):*0.2"}{p_end}
+
+{title:Example 3: no instrument, many fixed effects in the second stage}
+
+{phang2}. {stata clear}{p_end}
+{phang2}. {stata set seed 12345}{p_end}
+{pstd}We generate 50 states.{p_end}
+{phang2}. {stata set obs 50}{p_end}
+{phang2}. {stata generate state = _n}{p_end}
+{phang2}. {stata generate state_fe = 0.2 * rnormal()}{p_end}
+{phang2}. {stata generate first_treated = ceil(runiform()*20)}{p_end}
+{pstd}We generate 20 years.{p_end}
+{phang2}. {stata expand 20}{p_end}
+{phang2}. {stata "bysort state: generate year = _n"}{p_end}
+{phang2}. {stata generate year_fe = year * 0.001}{p_end}
+{phang2}. {stata generate treated = year >= first_treated}{p_end}
+{phang2}. {stata generate state_char = rnormal()}{p_end}
+{pstd}We generate 30 individuals per state/year combination.{p_end}
+{phang2}. {stata expand 30}{p_end}
+{phang2}. {stata generate ind_char = rnormal()}{p_end}
+{pstd}We generate the outcome. Note that we have state and year fixed effects..{p_end}
+{phang2}. {stata generate y = 1 + treated + 0.5 * state_char + 0.5 * ind_char + state_fe + year_fe + rnormal() * (1 + treated * 0.2)}{p_end}
+{pstd}The true quantile treatment effects at the 0.1, 0.25, 0.5, 0.75 and 0.9 quantiles:{p_end}
+{phang2}. {stata "mata: 1:+invnormal((0.1, 0.25, 0.5, 0.75, 0.9)):*0.2"}{p_end}
+{pstd}We estimate the effect with mdqr. The groups correspond to the state/year combinations. There are 3 numerically identical ways to include second stage fixed effects.{p_end}
+{pstd}First possibility: we include manually the fixed effects in the regression (many coefficients are reported!).{p_end}
+{phang2}. {stata mdqr y state_char ind_char i.year i.state treated, group(state year)}{p_end}
+{pstd}Second possibility: we use areg to absorb one category of fixed effects.{p_end}
+{phang2}. {stata mdqr y state_char ind_char i.year treated, group(state year) est_command(areg) est_opts(absorb(state))}{p_end}
+{pstd}Third possibility: we use reghdfe (or another user-written command) to absorb all the fixed effects.{p_end}
+{pstd}You can install this command by typing "ssc install reghdfe".{p_end}
+{phang2}. {stata mdqr y state_char ind_char treated, group(state year) est_command(reghdfe) est_opts(absorb(state year))}{p_end}
+
+
+{title:Saved results}
+
+{phang}{cmd:ivqte} saves the following in {cmd:e()}:
+
+{synoptset 15 tabbed}{...}
+{p2col 5 15 19 2: Scalars}{p_end}
+{synopt:{cmd:e(N)}}number of observations{p_end}
+{synopt:{cmd:e(N_groups)}}number of groups{p_end}
+
+{phang}Macros{p_end}
+{synopt:{cmd:e(command)}}{cmd:mdqr}{p_end}
+{synopt:{cmd:e(cmdline)}}command as typed{p_end}
+{synopt:{cmd:e(title)}}Minimum distance quantile Regression{p_end}
+{synopt:{cmd:e(depvar)}}name of dependent variable{p_end}
+{synopt:{cmd:e(xvar)}}name of the regressor(s){p_end}
+{synopt:{cmd:e(vce)}}vce type{p_end}
+{synopt:{cmd:e(method)}}2nd stage estimation command{p_end}
+{synopt:{cmd:e(clustvar)}}name of cluster variable{p_end}
+{synopt:{cmd:e(wtype)}}weight type{p_end}
+{synopt:{cmd:e(wexp)}}weight expression{p_end}
+
+{phang}Matrices{p_end}
+{p2col 5 20 19 2: let {it:k} be the number of regressors and {it:nq} be the number of quantile regressions}{p_end}
+{synopt:{cmd:e(quantiles)}}estimated quantile(s); {it:nq} column vector{p_end}
+{synopt:{cmd:e(b)}}coefficient vector; ({it:k}*{it:nq}) column vector{p_end}
+{synopt:{cmd:e(V)}}variance-covariance matrix of the estimators; ({it:k}*{it:nq}) by ({it:k}*{it:nq}) matrix{p_end}
+{synopt:{cmd:e(coefmat)}}matrix of coefficients; ({it:k} by {it:nq}) matrix{p_end}
+
+{synoptset 15 tabbed}{...}
+{p2col 5 15 19 2: Functions}{p_end}
+{synopt:{cmd:e(sample)}}marks the estimation sample{p_end}
+
+
+{title:Version requirements}
+
+{pstd}This command requires Stata 9.2 or later.  Stata 11 is required to use
+factor variables.  {cmd:qrprocess} is required; type {cmd:net install qrprocess, from("https://sites.google.com/site/mellyblaise/")}
+to install this package. Finally, {cmd:qrprocess}
+itself requires the package {cmd:moremata} (see Jann [2005b]). 
+Type {cmd:ssc install moremata} to install it.
+
+
+{title:Methods and formulas}
+
+{pstd} See Melly and Pons (2022).
+
+
+{title:References}
+
+
+{phang} Melly, B., and M. Pons. 2022. Minimum Distance Estimation of Quantile 
+Panel Data Models. {it:Working paper}. 
+{browse "http://martinapons.github.io/files/MD.pdf":http:/martinapons.github.io/files/MD.pdf}
+
+
+{phang} Jann, B. 2005b. moremata: Stata module (Mata) to provide various 
+functions. Statistical Software Components S455001, Department of Economics, 
+Boston College. {browse "http://ideas.repec.org/c/boc/bocode/s455001.html":http://ideas.repec.org/c/boc/bocode/s455001.html}.
+
+
+{title:Authors}
+
+{pstd}Blaise Melly{p_end}
+{pstd}Department of Economics{p_end}
+{pstd}Bern University{p_end}
+{pstd}Bern, Switzerland{p_end}
+{pstd}blaise.melly@unibe.ch{p_end}
+
+{pstd}Martina Pons{p_end}
+{pstd}Department of Economics{p_end}
+{pstd}Bern University{p_end}
+{pstd}Bern, Switzerland{p_end}
+{pstd}martina.pons@unibe.ch{p_end}
+
+{pstd}Please feel free to share your comments,
+report bugs, and propose extensions.
+
