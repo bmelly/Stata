@@ -1,0 +1,12 @@
+v 3
+d cic Changes in changes estimation with covariates
+d
+d cic implements in Stata the estimator suggested by Melly and Santangelo in "The changes-in-changes model with covariates".
+d
+d Distribution-Date: 20170425
+d
+d {bf:Blaise Melly, University of Bern}
+d {bf:Giulia Santangelo, JRC of the EC}
+d Support: email mellyblaise@gmail.com
+f cic.ado
+f cic.hlp
