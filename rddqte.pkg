@@ -1,0 +1,13 @@
+v 3
+d rddqte Quantile treatment effects in the regression discontinuity design
+d
+d The Stata command rddqte implements the estimators suggested in {browse "https://doi.org/10.1016/j.jeconom.2012.02.004": Frandsen, Froelich and Melly (2012)}.
+d Use at your own risk!
+d
+d Distribution-Date: 20180406
+d
+d {bf:Markus Froelich, Mannheim University}
+d {bf:Blaise Melly, Bern University}
+d Support: email mellyblaise@gmail.com
+f rddqte.ado
+f rddqte.hlp
