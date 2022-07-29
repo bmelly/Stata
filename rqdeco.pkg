@@ -1,0 +1,26 @@
+v 3
+d rqdeco Decomposition of differences in distributions using quantile regression
+d
+d Rqdeco is a Stata command computing a decomposition of differences in distributions using 
+d quantile regression. It is a generalization of the Oaxaca/Blinder decomposition since it decomposes
+d observed differences into a part explained by differences in characteristics and a part explained by
+d differences in coefficients. It is very similar to the Machado and Mata (2005) decomposition. 
+d This estimator is defined in the first chapter of {browse "http://www.econ.brown.edu/fac/Blaise_Melly/research_files/Diss3255.pdf": my PhD thesis}.
+d Rqdeco3 implements the estimator suggested in {browse "http://dx.doi.org/10.1016/j.labeco.2005.05.006":Melly (2005)}.
+d It decomposes differences in distribution into three components: characteristics, median coefficients 
+d and residuals. It is conceptually similar to the Juhn, Murphy and Pierce (1993) decomposition but
+d allows for heteroscedasticity.
+d Note that cdeco and cdeco_jmp are similar but more sophisticated and flexible. 
+d Therefore, I will no longer improve rqdeco and rqdeco3 and suggest using these commands instead.
+
+d
+d Distribution-Date: 20100519
+d
+d {bf:Blaise Melly, University of Bern}
+d Support: email mellyblaise@gmail.com
+f rqdeco.ado
+f rqdeco.hlp
+f rqdeco3.ado
+f rqdeco3.hlp
+f rqdeco.do
+f rqdeco3.do

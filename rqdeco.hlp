@@ -1,0 +1,303 @@
+{smcl}
+{* 27jan2010}{...}
+{cmd:help rqdeco}
+{hline}
+
+{title:Title}
+
+{p 4 8 2}
+{bf:Decomposition of differences in distributions using quantile regression}
+
+
+{title:Syntax}
+
+{p 8 17 2}
+{cmdab:rqdeco} {depvar} {indepvars} {ifin} {weight} {cmd:,} {cmd:by(}{it:groupvar}{cmd:)}  [{cmd:,}{it:options}]
+
+{synoptset 16 tabbed}{...}
+{synopthdr}
+{synoptline}
+{syntab:Model}
+{synopt:{opt nq:antreg(#)}}estimate {it:#} quantile regression uniformly distributed between 0 and 1; default is {cmd:nquantiles(100)}.{p_end}
+{synopt:{opt q:antiles(#)}}estimate {it:#} unconditional quantile.{p_end}
+{synopt:{opt ql:ow(#)}}sets the minimum value for the unconditional quantile; default is .1.{p_end}
+{synopt:{opt qh:igh(#)}}sets the maximum value for the unconditional quantile; default is .9.{p_end}
+{synopt:{opt qs:tep(#)}}sets the unconditional quantile increments; default is .1.{p_end}
+
+{syntab:Standard errors}
+{synopt :{opth vce(vcetype)}}{it:vcetype} may be {opt n:one} or {opt b:ootstrap}.{p_end}
+{synopt :{opt r:eps(#)}}perform {it:#} bootstrap replications; default is {cmd:reps(50)}.{p_end}
+{synopt :{help prefix_saving_option:{bf:{ul:sav}ing(}{it:filename}{bf:, ...)}}}save
+	the bootstrap results to {it:filename}{p_end}
+
+{syntab :Reporting}
+{synopt :{opt l:evel(#)}}set confidence level; default is {cmd:level(95)}.{p_end}
+{synopt :{opt nopr:int}}suppress display of the decomposition results.{p_end}
+{synoptline}
+{p 4 6 2}
+{cmd:by} is allowed; see {help prefix}.{p_end}
+{p 4 6 2}
+{cmd:pweight}s are allowed; see {help weight}.{p_end}
+
+
+{title:Description}
+
+{p 4 4 2}
+{cmd:rqdeco} decomposes differences in distribution using quantile regression. 
+This decomposition is very similar to the Machado and Mata (2005) decomposition.
+It is described in Melly (2006), where it is shown that it is numerically equivalent to the Machado
+and Mata decomposition when the number of simulations used in the Machado and Mata decomposition
+goes to infinity. The implemented estimator is much faster because it does not rely on
+simulations.
+
+{p 4 4 2}
+In the first step, the distribution of {it:depvar} conditional on {it:indepvars} 
+is estimated using linear quantile regression (see Koenker (2005) and {help qreg} 
+for more information on quantile regression and its implementation in Stata). The conditional 
+distribution is approximated by {opt nquantreg} quantile regressions. The conditional distribution 
+of {it:depvar} is then integrated over the {it:indepvars} to obtain the unconditional distribution.
+
+{p 4 4 2}
+This procedure allows us to estimate more precisely the unconditional distribution of a variable 
+by using the information contained in the regressors. Much more interesting, however, is the 
+ability to estimate counterfactual unconditional distributions. When we take the characteristics 
+distribution for the group with {it:groupvar}==1 and the coefficients estimated using the 
+observations with {it:groupvar}==0, we estimate the counterfactual distribution that we 
+would observe if the group 1 had the same output function than the group 0.
+
+{p 4 4 2}
+This counterfactual distribution can be used to decompose the differences in distribution. 
+For each of the quantiles defined by the option {opt quantiles} or by the options {opt qlow}, 
+{opt qhigh}, and {opt qstep}, the difference between the observed unconditional quantile of 
+{it:depvar} for group 1 and the same quantile for group 2 is decompose into a part explained 
+by the different characteristics distribution and a part explained by the different coefficients. 
+This can be considered as a generalisation of the famous Oaxaca/Blinder decomposition for the 
+mean.
+
+{p 4 4 2}
+A more complete description of the estimator and its statistical properties can be found 
+in Melly (2006) and in Chernozhukov, Fernandez-Val and Melly (2009). The validity of the bootstrap is
+shown in this second paper. Note, however, that the reported standard errors are pointwise standard errors and not
+functional confidence bands. See the command {cmd:counterfactual} for uniform confidence bands.
+
+{p 4 4 2}
+This command does NOT implement the estimator described in Melly (2005). 
+See the command {cmd:rqdeco3} if you are interested in this decomposition.
+
+
+{title:Options}
+
+{dlgtab:Model}
+
+{phang}
+{opt nquantreg(#)} sets the number of linear quantile regressions estimated in the first step.
+There is a trade-off between computation time and precision when chosing the number of 
+quantile regressions. The higher the number of quantile regressions estimated, the better 
+will be the estimation of the conditional distribution but the longuer will take the computation 
+of the results. Default is {cmd:nquantreg(100)} and this should be sufficient for a wide range
+of applications. The sensitivity of the results to this option can be assessed by estimating
+the model with different numbers of quantile regressions.
+
+{phang}
+{cmd:quantiles(}{it:#} [{it:#} [{it:#} {it:...}]]{cmd:)} specifies the unconditional quantiles 
+at which the decomposition will be estimated and should contain numbers between 0 and 1.
+Numbers larger than 1 are interpreted as percentages. Note that the computational time needed 
+to estimate an additional quantile is very short compared to that needed to estimate the quantile 
+regressions.
+
+{phang}
+{opt qlow(#)}, {opt qhigh(#)} and {opt qstep(#)} are an alternative way to set the unconditional
+quantiles at which the decomposition will be estimated. {opt qlow(#)} sets the lowest quantile; 
+default is 0.1. {opt qhigh(#)} set the highest quantile; default is 0.9. {opt qstep(#)} sets the 
+quantile increments; default is 0.1. Note that the information contained in these three options 
+will be used only if {opt quantiles} is not used.
+
+
+{dlgtab:Standard errors}
+
+{phang}
+{opt vce(vcetype)} sets the method used to estimate the standard errors. For the moment, only
+the bootstrap has been implemented and can be selected with {cmd:vce(bootstrap)}. The default,
+{cmd:vce(none)}, does not calculate the standard errors. The bootstrap can take a very long time
+and it is advisable to first estimate the model without bootstraping the results.
+
+{phang}{opt reps(#)} specifies the number of bootstrap replications to be used to obtain an 
+estimate of the variance-covariance matrix of the estimators (standard errors).  {cmd:reps(50)} 
+is the default.
+
+{phang}
+{help prefix_saving_option:{bf:saving}({it:filename}[, {it:suboptions}])}
+creates a Stata data file ({opt .dta} file) containing all bootstrap results.
+This allows, for instance, estimating the standard errors of statistics that are functions of several quantiles.
+In this data file, each observation corresponds to a bootstrap draw.
+If nq unconditional quantiles are estimated, the file will contains 3*nq variables. The first nq variables
+contain the quantiles estimated using the characteristics and coefficients from
+the group with {it:groupvar}==1. The second set of nq variables contain
+the quantiles estimated using the characteristics from
+the group with {it:groupvar}==1 and the coefficients from the group with {it:groupvar}==0.
+The last nq variables
+contain the quantiles estimated using the characteristics and the coefficients from
+the group with {it:groupvar}==0. 
+
+{phang2}
+{opt double} specifies that the results for each replication be stored as 
+{opt double}s, meaning 8-byte reals.  By default, they are stored as
+{opt float}s, meaning 4-byte reals. This option may be used without the 
+{cmd:saving()} option to compute the variance estimates using double
+precision.
+
+{phang2}
+{opt every(#)} specifies that results be written to disk every {it:#}th
+replication.  {opt every()} should be specified only in conjunction with 
+{opt saving()} when {it:command} takes a long time for each replication.  This
+option will allow recovery of partial results should some other software crash
+your computer.  See {helpb post:[P] postfile}.
+
+{phang2}
+{opt replace} specifies that {it:filename} be overwritten, if it exists.
+
+
+{dlgtab:Reporting}
+
+{phang}
+{opt level(#)}; see {help estimation options##level():estimation options}.
+
+{phang}
+{opt noprint} suppresses the printing of the decomposition results. In this case, only
+a short header will be printed. The results can be extracted from the saved matrices.
+
+
+{title:Saved results}
+
+{phang}{cmd:rqdeco} saves the following results in {cmd:r()}:
+
+{phang}Scalars{p_end}
+{col 10}{cmd:r(nquantreg)}{col 25} Number of estimated quantile regressions
+{col 10}{cmd:r(obs)}{col 25} Number of observations
+{col 10}{cmd:r(obs0)}{col 25} Number of observations with {it:groupvar}==0
+{col 10}{cmd:r(obs1)}{col 25} Number of observations with {it:groupvar}==1
+
+{phang}Macros{p_end}
+{col 10}{cmd:r(cmd)}{col 25} rqdeco
+
+{phang}Matrices{p_end}
+{col 10}{cmd:r(quants)}{col 25} Unconditional quantiles
+{col 10}{cmd:r(results)}{col 25} Counterfactual quantiles and decomposition
+{col 10}{cmd:r(se)}{col 25} Standard errors of the decomposition
+
+
+{title:Example with simulated data}
+
+{p 4 4}Set the number of observations and the seed:{p_end}
+{p 8}{cmd:. set obs 1000}{p_end}
+{p 8}{cmd:. set seed 1}{p_end}
+
+{p 4 4}Generate female, experience and lwage:{p_end}
+{p 8}{cmd:. generate female=(uniform()<0.5)}{p_end}
+{p 8}{cmd:. generate experience=4*invchi2(5,uniform())*(1-0.2*female)}{p_end}
+{p 8 19}{cmd:. generate lwage=2+experience*0.03-0.1*female}
+{cmd: +invnormal(uniform())*(0.6-0.2*female)}{p_end}
+
+{p 4 4}Decomposition of the median difference in lwage between men and women.
+We estimate 100 quantile regression in the first step and we don't estimate the
+standard errors (both are default values):{p_end}
+{p 8}{cmd:. rqdeco lwage experience, by(female) quantile(0.5)}{p_end}
+{p 4 4 2}Interpretation: the observed median gender gap is 31%.
+About 17% is explained by gender differences in the distribution of experience. About 14% is due to
+differing coefficients between men and women and can be interpreted as discrimination.
+
+{p 4 4}Decomposition of the 99 percentile differences in lwage between men and women.
+We estimate 100 quantile regression in the first step and we estimate the standard errors by
+bootstraping the results 100 times. We don't require a print of the results:{p_end}
+{p 8 17}{cmd:. rqdeco lwage experience, by(female) qlow(0.01) qhigh(0.99) qstep(0.01)}
+{cmd:vce(boot) reps(100) noprint}{p_end}
+
+{p 4 4}We can find the point estimates in the matrix {cmd:r(results)}:{p_end}
+{p 8}{cmd:. matrix list r(results)}{p_end}
+
+{p 4 4} We can find the standard errors in the matrix {cmd:r(se)}:{p_end}
+{p 8}{cmd:. matrix list r(se)}{p_end}
+
+{p 4 4} We prepare the data to plot the results:{p_end}
+{p 8}{cmd:. matrix results=r(results)}{p_end}
+{p 8}{cmd:. matrix se=r(se)}{p_end}
+{p 8}{cmd:. svmat results, names(col)}{p_end}
+{p 8}{cmd:. svmat se, names(col)}{p_end}
+
+{p 4 4} We plot the decomposition as a function of the quantile:{p_end}
+{p 8 17 2}{cmd:. twoway (line total_differential quantile)}{p_end}
+{p 17 17 2}{cmd: (line characteristics quantile)}{p_end}
+{p 17 17 2}{cmd: (line coefficients quantile),}{p_end}
+{p 17 17 2}{cmd: title(Decomposition of differences in distribution)}{p_end}
+{p 17 17 2}{cmd: ytitle(Log wage effects) xtitle(Quantile)}{p_end}
+{p 17 17 2}{cmd: legend(order(1 "Total differential" 2 "Effects of characteristics" 3 "Effects of coefficients"))}{p_end}
+{p 4 4 2}Interpretation: the observed gap is increasing (in absolute value) when we move up
+on the wage distribution. Actually, women are positively discriminated at the bottom of the 
+distribution. Both the experience distribution and the coefficients are responsible for this fact.
+The experience distribution is less dispersed for women than for men. The residuals also are less 
+dispersed for women than for men. Quantitatively, the second effect is more important than the
+first one. Looking at these results, we can write that there is a glass ceiling effect for women:
+the discrimination increases as we move up on the wage distribution.
+
+{p 4 4} We prepare the data to plot a 95% confidence interval for the effects of coefficients
+(discrimination):{p_end}
+{p 8}{cmd:. generate lo_coef=coefficients-1.96*se_coefficients}{p_end}
+{p 8}{cmd:. generate hi_coef=coefficients+1.96*se_coefficients}
+
+{p 4 4} We plot the effects of coefficients with a 95% confidence interval:{p_end}
+{p 8 17 2}{cmd:. twoway (rarea hi_coef lo_coef quantile, bcolor(gs13) legend(off))}{p_end}
+{p 17 17 2}{cmd: (line coefficients quantile),}{p_end}
+{p 17 17 2}{cmd: title(Effects of coefficients (discrimination)) ytitle(Log wage effects) xtitle(Quantile)}{p_end}
+
+
+{title:Version requirements}
+
+{p 4 4 2}This command has been written using Stata 9.2.
+
+
+{title:References}
+
+{p 4 6} Victor Chernozhukov, Ivan Fernandez-Val and Blaise Melly (2009): 
+Inference on counterfactual distributions. Mimeo.
+
+{p 4 6} Roger Koenker and Gilbert Bassett (1978): Regression Quantiles. Econometrica 46,
+33-50.
+
+{p 4 6} Roger Koenker (2005): Quantile Regression. Cambridge: Cambridge University Press.
+
+{p 4 6} Jose Machado and Jose Mata (2005): Counterfactual decomposition of changes in wage distributions
+using quantile regression. Journal of Applied Econometrics, 20, 445-465.
+
+{p 4 6} Blaise Melly (2005): Decomposition of differences in distribution using quantile regression. 
+Labour Economics, 12, 577-590.
+
+{p 4 6} Blaise Melly (2006): Estimation of counterfactual distributions using quantile regression.
+This paper can be downloaded {browse "http://www.alexandria.unisg.ch/publications/person/M/Blaise_Melly/22644":there}.
+
+
+{title:Remarks}
+
+{p 4 4}Any feedback
+from users is very useful. Please feel free to share your comments, reports of bugs and
+propositions for extensions are welcome.
+
+{p 4 4}If you use this command in your work, please cite: Blaise Melly, 2006, Estimation of counterfactual distributions using quantile regression, mimeo.
+
+
+{title:Disclaimer}
+
+{p 4 4 2}THIS SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESSED 
+OR IMPLIED. THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE PROGRAM IS WITH YOU. 
+SHOULD THE PROGRAM PROVE DEFECTIVE, YOU ASSUME THE COST OF ALL NECESSARY SERVICING, REPAIR OR CORRECTION.
+
+{p 4 4 2}IN NO EVENT WILL THE COPYRIGHT HOLDERS OR THEIR EMPLOYERS, OR ANY OTHER PARTY WHO
+MAY MODIFY AND/OR REDISTRIBUTE THIS SOFTWARE, BE LIABLE TO YOU FOR DAMAGES, INCLUDING ANY 
+GENERAL, SPECIAL, INCIDENTAL OR CONSEQUENTIAL DAMAGES ARISING OUT OF THE USE OR INABILITY TO USE THE PROGRAM.
+
+
+{title:Author}
+
+{p 4 6}Blaise Melly{p_end}
+{p 4 6}Brown university, Department of Economics{p_end}
+{p 4 6}blaise_melly@brown.edu{p_end}
+
