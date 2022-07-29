@@ -1,0 +1,12 @@
+v 3
+d nplate Nonparametric mean IV estimation
+d
+d Nplate implements in Stata the estimator suggested by {browse "http://dx.doi.org/10.1016/j.jeconom.2006.06.004":Frölich (2007)}.
+d
+d Distribution-Date: 20100519
+d
+d {bf:Markus Frölich, Mannheim University}
+d {bf:Blaise Melly, University of Bern}
+d Support: email mellyblaise@gmail.com
+f nplate.ado
+f nplate.hlp

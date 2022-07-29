@@ -1,0 +1,204 @@
+{smcl}
+{* 25july2008}{...}
+{cmd:help nplate}
+{hline}
+
+{title:Title}
+
+{p 4 8 2}
+{bf:Nonparametric IV estimation of local average treatment effects}
+
+
+{title:Syntax}
+
+{p 8 17 2}
+{cmdab:nplate} {depvar} {cmd:(}{it:treatment} {cmd:=} {it:instrument}{cmd:)} {ifin} [{cmd:,}{it:options}]
+
+
+{synoptset 25 tabbed}{...}
+{synopthdr :options}
+{synoptline}
+{syntab :Model}
+{synopt:{opth c:ontinuous(varlist)}}gives the name(s) of the continuous and ordered covariates.{p_end}
+{synopt:{opth d:ummy(varlist)}}gives the name(s) of the binary covariates.{p_end}
+{synopt:{opth u:nordered(varlist)}}gives the name(s) of the discrete unordered covariates.{p_end}
+
+{syntab:Estimation of the nonparametric functions}
+{synopt:{opt dep_log}}selects the local logit estimator to estimate the conditional mean outcome.{p_end}
+{synopt:{opt treat_lin}}selects the local linear estimator to estimate the conditional treatment probability.{p_end}
+{synopt:{opt mata_opt}}uses the official Mata function {bf:{help optimize()}}.{p_end}
+{synopt:{opt k:ernel(kernel)}}type of kernel function used to calculate the propensity score, where {it:kernel} is
+  {opt epan2} (Epanechnikov, the default),
+  {opt b:iweight},
+  {opt triw:eight},
+  {opt c:osine},
+  {opt g:aussian},
+  {opt p:arzen},
+  {opt r:ectangle}
+  or {opt t:riangle}.
+  {p_end}
+{synopt:{opt b:andwidth(#)}}sets the bandwidth used to calculate the propensity score.{p_end}
+{synopt:{opt l:ambda(#)}}sets the parameter lambda used to calculate the propensity score.{p_end}
+
+{syntab:Inference}
+{synopt:{opt v:ariance}}provides an analytical estimate of the variance.{p_end}
+{synopt:{opt inst_lin}}uses a local linear to estimate the conditional probability that the instrument is equal to 1.{p_end}
+{synopt:{opt trim(#)}}level of the propensity score under which observations are trimmed by the estimation of the variance, default is 0.01.{p_end}
+{synopt:{opt le:vel(#)}}set confidence level; default is {cmd:level(95)}{p_end}
+{synoptline}
+
+
+{title:Description}
+
+{p 4 4 2}
+{cmd:nplate} computes nonparametrically the local average treatment effect using an instrumental variable strategy. 
+This estimator was proposed by Froelich (2007). 
+
+{p 4 4 2}
+The instrument is assumed to satisfy the exclusion restriction only conditionally on the covariates given in 
+{opt dummy}, {opt unordered}, and {opt continuous}.
+
+{p 4 4 2} The instrumental variable {it:treatment} must be a binary 0/1 variable. 
+You can apply Theorem 8 of Froelich (2007) by defining a new instrument that is 0 for the lowest value, 1 for the highest value and missing otherwise.
+
+{p 4 4 2} We can distinguish between four types of covariates: continuous, ordered discrete, binary and unordered discrete.
+The first two types of variables are treated similarly by the kernel function and they must be given in the option 
+{opt continuous}. Binary variables must be given in {opt dummy}. Unordered discrete variables are treated similarly to the dummy
+variable in the kernel function but a set of dummies is then used in the regressions. To give an example, 
+experience and education should be given in {opt continuous}, female in {opt dummy} and region in {unordered}.
+
+{p 4 4 2} 
+By default, no standard errors are reported, because the estimation of the variance can take as much time as the point estimation itself. 
+Analytic standard errors can be obtained by selecting the option {opt variance}. 
+
+
+{title:Options}
+
+{dlgtab:Model}
+
+{phang}
+{opt continuous(varlist)}, {opt dummy(varlist)}, and {opt unordered(varlist)} allow to select the exogenous control variable. 
+Ordered variables can be considered as continuous.
+
+{dlgtab:Estimation of the nonparametric functions}
+
+{phang}
+{opt dep_log} selects a local logit estimator to estimate the conditional mean outcome. If this option is
+not activated, a local linear estimator is used. Of course, this option should be used only if the dependent
+variable is binary.
+
+{phang}
+{opt treat_lin} selects a local linear estimator to estimate the conditional mean treatment. This could be used
+to gain some computation time but does not guaranty that the estimated probability is between 0 and 1.
+
+{phang}
+{opt mata_opt} selects the official optimizer introduced in Stata 10, {help mata optimize()}. This matters only for 
+the local logit estimator.
+
+{phang}
+{opt kernel(kernel)} specifies the kernel function. {it:kernel} may
+be {opt epan2} (Epanechnikov kernel function; the default),
+{opt biweight} (biweight kernel function),
+{opt triweight} (triweight kernel function),
+{opt cosine} (cosine trace),
+{opt gaussian} (Gaussian kernel function),
+{opt parzen} (Parzen kernel function),
+{opt rectangle} (rectangle kernel function)
+or {opt triangle} (triangle kernel function). Note that usually
+the different kernel functions produce very similar results.
+
+
+{phang}
+{opt bandwidth(#)} is used to estimate the propensity score. Note that the continuous variables are 
+first normalized such that the covariance matrix is the identity matrix. If the bandwidth is not strictly positive, 
+an infinite bandwidth is assumed. Infinity is also the default value; it corresponds to a parametric, 
+linear, specification.
+
+{phang}
+{opt lambda(#)} is used to estimate the propensity score. It must be between 0 and 1. A value of 
+0 implies that only obervations within the cell defined by all discrete regressors are used to estimate
+the propensity score. The default value is 1; it corresponds to a parametric, linear, specification.
+
+{dlgtab:Inference}
+
+{phang}
+{opt variance} activates the estimation of the variance. The asymptotic variance is estimated by plugging in
+estimators for all elements appearing in the formula.
+
+{phang}
+{opt inst_lin} selects a local linear estimator to estimate the conditional probability that the instrument is equal
+to 1. This is faster than the local logit estimator but does not garanty that the estimated probabilitites are between 0 and 1.
+
+{phang}
+{opt trim(#)} controls the amount of trimming used to estimate the variance. The conditional probability of having the value of the instrument equal to 1
+appears in the asymptotic variance. The observations such a probability lower than {opt trim}
+or above 1-{opt trim} are trimmed. The default is 0.01. Of course, this option affects only the estimation of the variance.
+
+{phang}{opt level(#)}; see 
+{helpb estimation options##level():[R] estimation options}.
+
+
+{title:Saved results}
+
+{phang}{cmd:nplate} saves the following results in {cmd:e()}:
+
+{phang}Matrices{p_end}
+{col 10}{cmd:e(b)}{col 25}Local average treatment effect.
+{col 10}{cmd:e(V)}{col 25}Variance of the local average treatment effect.
+
+{phang}Functions{p_end}
+{col 10}{cmd:e(sample)}{col 25}Marks estimation sample
+
+
+{title:Version requirements}
+
+{p 4 4 2}This command requires Stata 9.2. Stata 10 is required to use the option {opt mata_opt}. 
+In addition {cmd:locreg} requires the {cmd:moremata} and {cmd:kdens} packages. Type
+{net "describe moremata, from(http://fmwww.bc.edu/repec/bocode/m/)":ssc describe moremata}{txt}
+and {net "describe kdens, from(http://fmwww.bc.edu/repec/bocode/k/)":ssc describe kdens}{txt}.
+
+
+{title:Methods and Formulas}
+
+{p 4 6} See Froelich (2007) for the assumptions, the definition of the estimator
+and its asymptotic distribution. See Froelich and Melly (2008) for the implementation of the nonparametric
+regressions in Stata.
+
+
+{title:References}
+
+{p 4 6} Markus Froelich (2007): Nonparametric IV estimation of local average treatment effects with covariates.
+Journal of Econometrics, 139, 35-75.
+
+{p 4 6} Markus Froelich and Blaise Melly (2008): Estimation of quantile treatment effects with STATA. 
+Mimeo.
+
+
+{title:Remarks}
+
+{p 4 4}Please feel free to share your comments, reports of bugs and
+propositions for extensions.
+
+{p 4 4}If you use this command in your work, please cite Froelich (2007) and
+Froelich and Melly (2008).
+
+
+{title:Disclaimer}
+
+{p 4 4 2}THIS SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESSED 
+OR IMPLIED. THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE PROGRAM IS WITH YOU. 
+SHOULD THE PROGRAM PROVE DEFECTIVE, YOU ASSUME THE COST OF ALL NECESSARY SERVICING, REPAIR OR CORRECTION.
+
+{p 4 4 2}IN NO EVENT WILL THE COPYRIGHT HOLDERS OR THEIR EMPLOYERS, OR ANY OTHER PARTY WHO
+MAY MODIFY AND/OR REDISTRIBUTE THIS SOFTWARE, BE LIABLE TO YOU FOR DAMAGES, INCLUDING ANY 
+GENERAL, SPECIAL, INCIDENTAL OR CONSEQUENTIAL DAMAGES ARISING OUT OF THE USE OR INABILITY TO USE THE PROGRAM.
+
+
+{title:Authors}
+
+{p 4 6}Blaise Melly and Markus Froelich{p_end}
+{p 4 6}Brown University and University of Mannheim{p_end}
+{p 4 6}melly@mit.edu{p_end}
+{p 4 6}{browse froelich.vwl.uni-mannheim.de}{p_end}
+{p 4 6}{browse www.siaw.unisg.ch/lechner/melly}{p_end}
+
