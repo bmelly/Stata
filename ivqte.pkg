@@ -1,0 +1,24 @@
+v 3
+d ivqte Estimation of quantile treatment effects in Stata
+d
+d The Stata command ivqte implements four different estimators: the classical quantile regression 
+d estimator of Koenker and Bassett (1978) extended to heteroskedasticity consistent standard errors, 
+d the instrumental variable (IV) quantile regression estimator of Abadie, Angrist, and Imbens (2002), 
+d the estimator for unconditional QTE proposed by Firpo (2007), and the IV estimator for 
+d unconditional QTE proposed by {browse "http://www.econ.brown.edu/fac/Blaise_Melly/research_files/Ivqte.pdf": Frölich and Melly (2009)}. 
+d This command also provides analytical standard errors and various options for nonparametric
+d estimation. As a by-product, the command locreg implements local linear and local logit estimators
+d for mixed data (continuous, ordered discrete, unordered discrete and binary regressors).
+d
+d Distribution-Date: 20220729
+d
+d {bf:Markus Frölich, Mannheim University}
+d {bf:Blaise Melly, University of Bern}
+d Support: email mellyblaise@gmail.com
+f ivqte.ado
+f ivqte.hlp
+f locreg.ado
+f locreg.hlp
+f ivqte_examples.do
+f locreg_examples.do
+f jtpa.dta
