@@ -11,3 +11,4 @@ p nplate Nonparametric mean IV estimation
 p qrprocess Quantile Regression: quick algorithms, pointwise and functional inference
 p drprocess Distribution Regression: quick algorithms, pointwise and functional inference
 p cic Changes-in-changes with covariates
+p mdqr Minimum distance quantile regression
