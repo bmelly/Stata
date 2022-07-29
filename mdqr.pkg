@@ -1,0 +1,15 @@
+v 3
+d mdqr - Minimum distance quantile regression
+d
+d The Stata commands mdqr and xtmdqr implement 
+d the minimum distance estimators for grouped 
+d and panel data suggested in Melly and Pons (2022)
+d
+d Distribution-Date: 20220729
+d
+d {bf:Blaise Melly, Bern University}
+d Support: email mellyblaise@gmail.com
+f mdqr.ado
+f xtmdqr.ado
+f mdqr.sthlp
+f xtmdqr.sthlp
