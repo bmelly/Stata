@@ -1,0 +1,431 @@
+{smcl}
+{* *! version 1.0.1  14apr2020}{...}
+
+{title:Title}
+
+{p2colset 5 19 19 2}{...}
+{p2col :{hi:drprocess} {hline 2}}Distribution regression{p_end}
+{p2colreset}{...}
+
+{marker syntax}{...}
+{title:Syntax}
+
+{p 8 13 2}
+{cmd:drprocess} {depvar} [{indepvars}] {ifin} 
+[{it:{help drprocess##weight:weight}}]
+	[{cmd:,} {it:{help drprocess##options:options}}]
+
+{synoptset 30 tabbed}{...}
+{marker options}{...}
+{synopthdr :options}
+{synoptline}
+{syntab :Distribution regressions to be estimated}
+{synopt :{opth t:hresholds(numlist)}} specifies the values at which the conditional distribution of {depvar} given {indepvars} will be estimated. If this option is not specified, the thresholds will be determined by the option {cmd:ndreg}.{p_end}
+{synopt :{opth nd:reg(#)}} determines the number of distribution regressions to be estimated; the default is 1 when the option {cmd:functional} is not activated and 100 when this option is activated.{p_end}
+
+{syntab:Algorithmic method}
+{synopt :{opt m:ethod}{cmd:(}[{it:{help drprocess##mtype:mtype}}]{cmd:,} [{it:{help drprocess##mopts:onestep}}]{cmd:)}} specifies the estimator used to compute the distribution regression estimates.{p_end}
+
+{syntab:Inference}
+{synopt :{opt v:ce}{cmd:(}[{it:{help drprocess##vtype:vtype}}]{cmd:,} [{it:{help drprocess##vopts:vopts}}]{cmd:)}} specifies the technique used to estimate standard errors (variance-covariance matrix of the estimates).{p_end}
+{synopt :{opt f:unctional}} activates the tools for functional inference (uniform confidence bands, test of functional hypotheses).{p_end}
+
+{syntab :Reporting}
+{synopt :{opt l:evel(#)}}sets confidence level; default is {cmd:level(95)}.{p_end}
+{synopt :{opt noprint}}suppresses display of the results.{p_end}
+{synoptline}
+{p2colreset}{...}
+
+
+{synoptset 26}{...}
+{marker mtype}{...}
+{synopthdr :mtype}
+{synoptline}
+{synopt :{opt logit}}, the default, selects the binary logistic regression model.{p_end}
+{synopt :{opt probit}}selects the binary probit regression model.{p_end}
+{synopt :{opt lpm}}selects the linear probability model (i.e. OLS for binary dependent variables). This algorithm is by far the quickest but should only be considered as providing a linear approximation to the true conditional cdf.{p_end}
+{synopt :{opt cloglog}}selects the complementary log-log model.{p_end}
+{synoptline}
+{p2colreset}{...}
+
+
+{synoptset 26}{...}
+{marker mopts}{...}
+{synopthdr :onestep}
+{synoptline}
+{synopt :{opt onestep}}selects the one-step estimator.{p_end}
+{synoptline}
+{p2colreset}{...}
+
+
+{synoptset 26}{...}
+{marker vtype}{...}
+{synopthdr :vtype}
+{synoptline}
+{synopt :{opt r:obust}}selects the analytical estimator of the asymptotic variance-covariance; the default when functional tests and confidence bands are not requested.{p_end}
+{synopt :{opt boot:strap}}selects a bootstrap method; the default when functional tests and confidence bands are requested.{p_end}
+{synopt :{opt mult:iplier}}multiplier bootstrap estimates of the VCE.{p_end}
+{synopt :{opt novar}}does not compute the VCE.{p_end}
+{synoptline}
+{p2colreset}{...}
+
+
+{synoptset 26}{...}
+{marker vopts}{...}
+{synopthdr :vopts}
+{synoptline}
+{synopt :{opt c:luster(varname)}}cluster identification variable.{p_end}
+{synopt :{opt s:trata(varname)}}strata identification variable.{p_end}
+{synopt :{opt bm:ethod}{cmd:(}{it:{help drprocess##bmethod:bmethod}}{cmd:)}}bootstrap method.{p_end}
+{synopt :{opt r:eps(#)}}number of bootstrap replications; default value is 100.{p_end}
+{synopt :{opt nor:eplacement}}subsampling only: performs subsampling without replacement; default is subsampling with replacement.{p_end}
+{synopt :{opt s:ubsize(#)}}subsampling only: size of the subsamples.{p_end}
+{synoptline}
+{p2colreset}{...}
+
+
+{synoptset 26}{...}
+{marker bmethod}{...}
+{synopthdr :bmethod}
+{synoptline}
+{synopt :{opt empirical}}uses the empirical bootstrap; the default with {cmd: vce(bootstrap)}.{p_end}
+{synopt :{opt subsampling}}uses subsampling.{p_end}
+{synopt :{opt weighted}}uses the weighted bootstrap with standard exponential weights; can only be used with {cmd: vce(bootstrap)}.{p_end}
+{synopt :{opt wild}}uses the wild bootstrap; the default with {cmd: vce(multiplier)}; can only be used with {cmd: vce(multiplier)}.{p_end}
+{synopt :{opt Gaussian}}uses Gaussian weights; can only be used with {cmd: vce(multiplier)}.{p_end}
+{synopt :{opt weighted}}uses centered standard exponential weights; can only be used with {cmd: vce(multiplier)}.{p_end}
+{synoptline}
+{p2colreset}{...}
+
+
+{phang}{cmd:by} is allowed with {cmd:drprocess}.{p_end}
+{marker weight}{...}
+{phang}{cmd:drprocess} allows {cmd:fweight}s, {cmd:iweight}s, and {cmd:pweight}s; see {help weight}.{p_end}
+{phang}See {helpb drprocess_postestimation:drprocess postestimation} for features available after estimation.
+
+
+{marker description}{...}
+{title:Description}
+
+{pstd}
+{cmd:drprocess} fits distribution regression models. 
+OLS generalizes the univariate mean to the conditional mean function; similarly distribution regression generalizes
+the concept of the univariate cumulative distribution function (cdf) to the conditional cdf.
+For each threshold {it:y}, an indicator variable 1({it:depvar}<={it:y}) is generated are regressed on the regressors in {it:indepvar}.
+Four models have been implemented: logit, probit, cloglog and the "linear probability model" (OLS).
+The model can be selected with the option {cmd:method}. This option also allows to 
+select the one-step estimator which is faster to compute when a large number of regressions must be estimated but it is only asymptotically equivalent to the other algorithms.
+The options {cmd:thresholds} or {cmd:ndreg} can be used to select the thresholds {it:y} at which the conditional cdf will be estimated.
+{cmd:drprocess} also provides 
+analytical estimates of the variance-covariance matrix of the coefficients for several regressions allowing for weights, clustering and stratification. 
+The pointwise standard errors and confidence intervals are calulated according to the option {cmd:vce}.
+In addition
+to traditional pointwise confidence intervals, the command also provide functional confidence bands and tests of functional hypotheses.
+Functional tests and confidence bands are provided if the option {cmd:functional} is activated.
+
+{pstd}  
+See {helpb plotprocess:plotprocess} to easily plot the coefficients and their confidence intervals.
+
+{pstd}  
+For more detailed information about the Stata command, please refer 
+to {helpb drprocess##CFM_Stata: Chernozhukov, Fernández-Val and Melly (2020)}. 
+For additional theoretical results about distribution regression, see {helpb drprocess##CFM_Stata: Chernozhukov, Fernández-Val and Melly (2020)}
+and {helpb drprocess##CFMW: Chernozhukov, Fernández-Val, Melly and Wüthrich (2020)}.
+
+{pstd}  
+Quantile regression is an alternative model for the conditional distribution of
+the dependent variable. See {helpb qrprocess:qrprocess} for this model.
+
+{marker options}{...}
+{title:Options}
+
+{dlgtab:Model}
+
+{phang}{opt thresholds(#)}specifies the value(s) {it:y} at which the conditional 
+distribution of the {it:depvar} given the {it:indepvars} will be estimated, 
+i.e. Prob({ite:depvar}<={it:y}|{it:indepvars}). This should be either a number 
+or a list of numbers between the minimum and the maximum values taken by {it:depvar}.
+ All the shorthands described in {helpb numlist:[U] 11.1.8} numlist can be used;
+ for instance {cmd:thresholds}(1/10) is allowed. 
+ Note that issues with perfect prediction may arise and slow down the computation 
+ when the threshold goes too far into the tails of the distribution of the dependent 
+ variable. If the option {cmd:thresholds} is not specified, then the thresholds 
+ will be determined by the option {cmd:ndreg(#)}. 
+
+{phang}{opt ndreg(#)} determines the number of distribution regressions to be estimated. 
+ The thresholds {it:y} are then determined by the unconditional quantiles of  
+ {it:depvar} uniformly spaced after trimming the tails of the distribution. 
+ When the option {cmd:functional}  is not activated,  the default is {cmd:ndreg(1)} 
+ and a single DR evaluated at the unconditional median of {it:depvar} is estimated. 
+ When the option {cmd:functional} is activated, the default is {it:ndreg(100)}.
+ 
+{dlgtab:Algorithmic Method}
+
+{phang}{cmd:method(}[{it:{help drprocess##mtype_detail:mtype}}]{cmd:,} [{it:{help drprocess##mopts_detail:onestep}}]{cmd:)}
+specifies the method used to estimate the requested distribution regressions
+estimates.
+
+{phang2}
+{marker mtype_detail}
+{it:mtype} selects the model. Available types are {cmd:logit}, 
+{cmd:probit}, {cmd:cloglog}, and {cmd:lpm}.
+
+{phang3}
+{cmd:method(logit)}, the default, selects the binary logistic regression model.
+
+{phang3}
+{cmd:method(probit)}selects the binary probit regression model.
+ 
+{phang3}
+{cmd:method(cloglog)}selects the complementary log-log model. 
+
+{phang3}
+{cmd:method(lpm)}selects the linear probability model (i.e. OLS for binary dependent variables). 
+This algorithm is by far the quickest but should only be considered as providing
+a linear approximation to the true conditional cdf.
+
+
+{phang2}
+{marker mopts_detail}
+{cmd:onestep)}selects the one-step estimators suggested in {helpb drprocess##CFM_Stata: Chernozhukov, Fernández-Val and Melly (2020)}.
+These estimators are faster to compute when a large number of DR must be estimated 
+but they are only asymptotically equivalent to the MLE that are computed when this suboption is not activated.
+This option should only be activated when the dependent variable is continuous.
+This option is not available
+when {cmd:method(lpm)} is selected because a closed-form solution exists for the OLS estimator. 
+ 
+{dlgtab: Variance Covariance Matrix of the Estimates (VCE)}
+
+{phang}{cmd:vce(}[{it:{help drprocess##vcetype_detail:vcetype}}]{cmd:,} [{it:{help drprocess##vceopts_detail:vceopts}}]{cmd:)}
+selects the method  to compute the VCE and the options related to the estimation of the variance.
+
+{phang2}
+{marker vcetype_detail}
+{it:vcetype} selects the estimator of the VCE. Available types are {cmd:robust},{cmd:bootstrap}, {cmd:multiplier}, and {cmd:novar}.
+
+{phang3}
+{cmd:vce(robust)} selects the analog estimator of the asymptotic variance-covariance matrix 
+obtained without assuming correct specification of the conditional cdf. This means that
+we consider the estimators as pseudo-MLE or quasi-MLE. This is the 
+default {it:vcetype} when the option {cmd:functional} is not activated.
+
+{phang3}
+{cmd:vce(bootstrap)}, computes bootstrap estimates of the VCE.
+ {help drprocess##Chernozhukov_et_al_2013:Chernozhukov, Fernández-Val and Melly (2013)} proved the validity of the exchangeable bootstrap for the (entire) distribution regression process.
+ The exchangeable bootstrap covers the {cmd:empirical}, {cmd:weighted}, {cmd:subsampling} without replacement, and {it:m} out of {it:n} bootstraps ({cmd:subsampling} with replacement) as special cases.
+ All these special cases have been implemented in {cmd:drprocess}. The specific resampling method can be determined with the suboption {it:bmethod}.
+ By default, the standard empirical bootstrap is used: {it:n} observations are sampled with replacement from the sample of size {it:n}.
+
+{phang3}
+{cmd:vce(multiplier)}, estimates the variance by bootstrapping the first-order approximation of the distribution regression estimates.
+The multiplier bootstrap takes less time to compute because it does not involve reestimating
+the whole distribution regression process for each bootstrap draw, as it is the case when {cmd:vce(bootstrap)}. The first-order approximation is computed once and is
+mutiplied with independent bootstrap weights. By default, the wild bootstrap is used but Gaussian or re-centered exponential weights
+can also be used as well as the empirical bootstrap or sub-sampling.
+ 
+{phang3}
+{cmd:vce(novar)}, does not compute the VCE. This option should be used if only the point estimates are of interest.
+
+{phang2}
+{marker vceopts_detail}
+{it:vceopts} provides further options related to the computation of the variance.
+It consists of the following options: {cmd:cluster(}{it:varname}{cmd:)}, {cmd:strata(}{it:varname}{cmd:)}, {cmd:bmethod(}{it:bmethod}{cmd:)}, {cmd:reps(#)}, {cmd: subsize(#)}, {cmd:noreplacement}.
+
+{phang3}
+{opt c:luster(varname)}, specifies that the standard errors allow for intragroup correlation, relaxing the usual requirement that the observations be independent. That is, the observations are independent across groups (clusters) but not necessarily within groups. The numeric cluster {it:varname} variable specifies to which group each observation belongs.
+
+{phang3}
+{opt s:trata(varname)}, specifies that the sampling was stratified. This means that the population was divided into non-overlapping strata and pre-specified numbers of observations were sampled from each stratum. The numeric strata {it:varname} variable specifies to which stratum each observation belongs.
+
+{marker bmethod_detail}
+{phang3}
+{opt bm:ethod(bmethod)} selects the bootstrap method.  The following values for {it:bmethod} are available when {cmd:vce(bootstrap)} has been chosen: {cmd:empirical} (the default), {cmd:weighted}, and {cmd:subsampling}. The following values for {it:bmethod} are available when {cmd:vce(multiplier)} has been chosen: {cmd:wild} (the default), {cmd:exponential}, {cmd:Gaussian}, {cmd:empirical}, and {cmd:subsampling}.
+
+{p 16 20 2}{cmd:empirical} uses the standard empirical bootstrap. This is the default option .
+
+{p 16 20 2}{cmd:subsampling} uses subsampling with replacement, also called {it:m} out of {it:n} bootstrap.
+
+{p 16 20 2}{cmd:weighted} uses the weighted bootstrap.
+For each bootstrap replication, instead of resampling the observations from the sample, all observations are kept and weighted. The weights are drawn independently from the standard exponential distribution.
+One advantage of the weighted bootstrap is that no perfect mutlicolinearity problem can appear for any bootstrap replication.
+Since all the bootstrap weights are always strictly positive, the rank of the regressors matrix will remain the same in each of the boostrap replication.
+As a resullt, the weighted bootstrap is particularly appropriate when some regressors are indicators of rare characteristics.
+
+{p 16 20 2}{cmd:wild} uses wild bootstrap. This option can be used only when the {cmd:multiplier} bootstrap has been selected.
+
+{p 16 20 2}{cmd:exponential} uses recentered standard exponential weights. This option can be used only when the {cmd:multiplier} bootstrap has been selected.
+
+{p 16 20 2}{cmd:Gaussian} uses Gaussian weights. This option can be used only when the {cmd:multiplier} bootstrap has been selected.
+
+{phang3}
+{opt r:eps(#)}, specifies the number of bootstrap replications to be performed. The default is 100. 
+
+{phang3}
+{opt nor:eplacement} specifies that the resampling should be done without replacement. This method is not recommended.
+ It is crucial to specify a small subsample size (much smaller than the sample size) when this option is activated.
+ This option is relevant only if {cmd:bmethod(subsampling)} is chosen.
+
+{phang3}
+{opt s:ubsize(#)} specifies the size of the subsamples to be drawn. This option is
+relevant only if {cmd:bmethod(subsampling)} is chosen.
+
+{phang}
+{opt f:unctional}, activates the tools for functional inference (uniform confidence bands, test of functional hypotheses).
+These tools are based on the whole distribution regression process.
+Therefore, it is crucial that a large number of distribution regressions is estimated. This is done by default if the options {cmd: ndreg} and {cmd:thresholds} are not specified.
+The tests use the Kolmogov-Smirnov and the Cramer-von-Mises statistics to measure deviations from the null hypothesis.
+The p-values for five null hypotheses are computed: no effect, positive effect, negative effect, constant effect (or homogeneity hypothgesis, or location shift hypothesis) and location-scale shift.
+Each of these hypothesis is tested for a single parameter or for all slope parameters simultaneously.
+{cmd:vce(bootstrap)} or {cmd:vce(multiplier)} are the only accepted methods when {cmd:functional} is activated.
+
+{dlgtab:Reporting}
+
+{phang}
+{opt level(#)} specifies the confidence level, as a percentage, for confidence intervals. The
+default is level(95) or as set by {cmd:set level}; see 
+{helpb estimation options##level():[R] estimation options}.
+
+{phang}
+{opt norpint} prevents the display of the coefficients table.
+ By default, the coefficients table is displayed but it can be extremely voluminous when many distribution regressions are estimated.
+
+
+{marker examples}{...}
+{title:Examples}
+
+    {hline}
+{pstd}Use the auto dataset{p_end}
+{phang2}{cmd:. sysuse auto}{p_end}
+
+{pstd}One distribution regression at the unconditional median{p_end}
+{phang2}{cmd:. drprocess price weight length foreign}{p_end}
+
+{pstd}Replay results{p_end}
+{phang2}{cmd:. drprocess}
+
+{pstd}Estimate the distribution at the 10'000 threshold{p_end}
+{phang2}{cmd:. drprocess price weight length foreign, threshold(10000)}
+{p_end}
+
+{pstd}Estimate 10 distribution regresions at 10 different thresholds{p_end}
+{phang2}{cmd:. drprocess price weight length foreign, ndreg(10)}{p_end}
+
+{pstd}Activate functional inference, which will select the default of 100 regressions and the bootstrap for inference{p_end}
+{phang2}{cmd:. drprocess price weight length foreign, functional}{p_end}
+
+{pstd}Now with the probit link function{p_end}
+{phang2}{cmd:. drprocess price weight length foreign, functional method(probit)}{p_end}
+
+{pstd}Use the cps91 dataset{p_end}
+{phang2}{cmd:. use http://www.stata.com/data/jwooldridge/eacsap/cps91 }{p_end}
+ 
+{pstd}Estimate 100 distribution regression with the logit one-step estimator with functional inference based on the multiplier bootstrap and 500 replications{p_end}
+{phang2}{cmd:. drprocess lwage c.age##c.age i.black i.hispanic educ, functional method(logit, onestep) vce(multiplier, reps(500))}{p_end}
+
+{pstd}Plot all the coefficients{p_end}
+{phang2}{cmd:. plotprocess}{p_end}
+
+{pstd}Plot the coefficient on education{p_end}
+{phang2}{cmd:. plotprocess educ, ytitle("DR coefficent") title("Years of education")}{p_end}
+
+{pstd}Estimate the same process with the linear probability model, {p_end}
+{phang2}{cmd:. drprocess lwage c.age##c.age i.black i.hispanic educ, method(lpm) functional}{p_end}
+	{hline}
+
+
+{marker results}{...}
+{title:Stored results}
+
+{pstd}
+{cmd:drprocess} stores the following in {cmd:e()}:
+
+{synoptset 20 tabbed}{...}
+{p2col 5 20 19 2: Scalars}{p_end}
+{synopt:{cmd:e(N)}}number of observations{p_end}
+{synopt:{cmd:e(df_m)}}model degrees of freedom{p_end}
+{synopt:{cmd:e(df_r)}}residual degrees of freedom{p_end}
+{synopt:{cmd:e(N_strat)}}number of strata{p_end}
+{synopt:{cmd:e(N_clust)}}number of clusters{p_end}
+{synopt:{cmd:e(reps)}}number of replications{p_end}
+{synopt:{cmd:e(subsize)}}subsample size{p_end}
+
+{p2col 5 20 19 2: Macros}{p_end}
+{synopt:{cmd:e(cmd)}}{cmd:drprocess}{p_end}
+{synopt:{cmd:e(cmdline)}}command as typed{p_end}
+{synopt:{cmd:e(title)}}Distribution regression{p_end}
+{synopt:{cmd:e(depvar)}}name of dependent variable{p_end}
+{synopt:{cmd:e(xvar)}}name of the regressor(s){p_end}
+{synopt:{cmd:e(vce)}}vce type specified in {cmd:vce()}{p_end}
+{synopt:{cmd:e(wtype)}}weight type{p_end}
+{synopt:{cmd:e(wexp)}}weight expression{p_end}
+{synopt:{cmd:e(properties)}}b V{p_end}
+{synopt:{cmd:e(predict)}}program used to implement {cmd:predict}{p_end}
+{synopt:{cmd:e(estat_cmd)}}program used to implement estat{p_end}
+{synopt:{cmd:e(method)}}algorithmic method{p_end}
+{synopt:{cmd:e(bmethod)}}bootstrap method V{p_end}
+{synopt:{cmd:e(replacement)}}subsampling method, "with replacement" or "without replacement"{p_end}
+{synopt:{cmd:e(clustvar)}}name of cluster variable{p_end}
+{synopt:{cmd:e(stratvar)}}name of strata variable{p_end}
+
+{p2col 5 20 19 2: Matrices}{p_end}
+{p2col 5 20 19 2: let {it:k} be the number of regressors and {it:nq} be the number of quantile regressions}{p_end}
+{synopt:{cmd:e(quantiles)}}estimated quantile(s); {it:nq}*1 vector{p_end}
+{synopt:{cmd:e(b)}}coefficient vector; ({it:k}*{it:nq})*1 vector{p_end}
+{synopt:{cmd:e(V)}}variance-covariance matrix of the estimators; ({it:k}*{it:nq})*({it:k}*{it:nq}) matrix{p_end}
+{synopt:{cmd:e(sum_rdev)}}sum of absolute deviations; {it:nq}*1 vector{p_end}
+{synopt:{cmd:e(sum_mdev)}}sum of raw deviations; {it:nq}*1 vector{p_end}
+{synopt:{cmd:e(coefmat)}}matrix of coefficients; ({it:k}*{it:nq}) matrix{p_end}
+{synopt:{cmd:e(pointwise)}}lower and upper bounds of the pointwise confidence intervals; ({it:k}*{it:nq})*2 matrix{p_end}
+{synopt:{cmd:e(uniform)}}lower and upper bounds of the functional confidence bands; ({it:k}*{it:nq})*2 matrix{p_end}
+{synopt:{cmd:e(tests)}}p-values of the {cmd:functional} tests; ({it:k} + 1)*10 matrix{p_end}
+
+{p2col 5 20 19 2: Functions}{p_end}
+{synopt:{cmd:e(sample)}}marks estimation sample{p_end}
+
+
+{title:Version requirements}
+
+{pstd}This command requires Stata 9.2 or later.  In addition, it requires the 
+package {cmd:moremata} (see {help drprocess##Jann:Jann (2005)}).  Type {cmd:ssc install moremata}
+to install this package.
+
+
+{title:References}
+
+
+{phang}
+{marker Chernozhukov_et_al_2013}
+Chernozhukov, V., I. Fernández-Val, and B. Melly. 2013. Inference on counterfactual distributions. {it:Econometrica} 81(6): 2205-2268.
+{p_end}
+
+{phang}
+{marker CFM_Stata}
+Chernozhukov, V., I. Fernández-Val, and  B. Melly. 2020. Quantile and distribution regression in Stata: algorithms, pointwise and functional inference. {it:Working paper}.
+{p_end}
+
+{phang}
+{marker CFMW}
+Chernozhukov, V., I. Fernández-Val, B. Melly, and K. Wüthrich. 2020. Generic Inference on Quantile and Quantile Effect Functions for Discrete Outcomes. {it:Journal of the American Statistical Association} volume 115, issue 529, pages 123–137.
+{p_end}
+
+{phang}
+{marker Jann}
+Jann, B. 2005. moremata: Stata module (Mata) to provide various 
+functions. Statistical Software Components S455001, Department of Economics, 
+Boston College. {browse "http://ideas.repec.org/c/boc/bocode/s455001.html":http://ideas.repec.org/c/boc/bocode/s455001.html}.
+
+
+{title:Remarks}
+
+{p 4 4}This is a preliminary version. Please feel free to share your comments, reports of bugs and
+propositions for extensions.
+
+{p 4 4}If you use this command in your work, please cite {helpb drprocess##CFM_Stata: Chernozhukov, Fernández-Val and Melly (2020)}.
+
+
+{title:Authors}
+
+{p 4 6}Victor Chernozhukov, Iván Fernández-Val and Blaise Melly{p_end}
+{p 4 6}MIT, Boston University and University of Bern{p_end}
+{p 4 6}mellyblaise@gmail.com{p_end}
+

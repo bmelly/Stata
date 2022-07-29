@@ -1,0 +1,16 @@
+v 3
+d qrprocess - Quantile Regression Process in Stata
+d
+d The Stata command qrprocess offers additional tools for the estimation of
+d and inference on quantile regression models.
+d
+d Distribution-Date: 20210529
+d
+d {bf:Blaise Melly, Bern University}
+d Support: email mellyblaise@gmail.com
+f qrprocess.ado
+f qrprocess_p.ado
+f plotprocess.ado
+f qrprocess.sthlp
+f qrprocess_postestimation.sthlp
+f plotprocess.sthlp
