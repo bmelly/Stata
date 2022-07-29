@@ -1,0 +1,480 @@
+{smcl}
+{* *! version 1.0.0  20feb2009}{...}
+{cmd:help counterfactual} 
+{hline}
+
+{title:Title}
+
+{p2colset 5 25 22 2}{...}
+{p2col :{hi: counterfactual} {hline 2}}Estimation of and inference on counterfactual distributions{p_end}
+{p2colreset}{...}
+
+
+{title:Syntax}
+
+{p 7 16 2}
+{opt counterfactual} {depvar} {indepvars} {ifin} {weight}
+   [{cmd:,} {it:options}]
+
+{synoptset 25 tabbed}{...}
+{synopthdr}
+{synoptline}
+
+{syntab:Reference and counterfactual samples}
+{synopt :{opth g:roup(varname)}}define the reference and counterfactual observations{p_end}
+{synopt :{opth c:ounterfactual(varlist)}}select the counterfactual variables{p_end}
+
+{syntab:Quantiles}
+{synopt:{cmdab:q:uantiles(}{it:#}[{it:#}[{it:# ...}]]{cmd:)}}estimate {it:#} quantiles.{p_end}
+{synopt:{opt ql:ow(#)}}sets the minimum value for the quantiles to estimate; default is .1.{p_end}
+{synopt:{opt qh:igh(#)}}sets the maximum value for the quantiles to estimate; default is .9.{p_end}
+{synopt:{opt qs:tep(#)}}sets the quantile increment; default is .1.{p_end}
+
+{syntab:Conditional model}
+{synopt :{opt m:ethod(string)}}select the model used to estimate the conditional distribution. The following methods have been implemented: 
+{opt qr} (the default), {opt loc}, {opt locsca}, {opt cqr}, {opt cox}, {opt logit},
+{opt probit}, and {opt lpm}.{p_end}
+{synopt:{opt nr:eg(#)}}sets the number of regressions estimated to approximate the conditional distribution; default is 100.{p_end}
+
+{syntab:Further options for the location scale model}
+{synopt :{opth sc:ale(varlist)}}select the scale variables for the location-scale model.{p_end}
+{synopt :{opth counterscale(varlist)}}select the counterfactual scale variables for the location-scale model.{p_end}
+
+{syntab:Further options for the censored regression model}
+{synopt :{opth c:ensoring(varname)}}gives the censoring value for each observations.{p_end}
+{synopt :{opt ri:ght}}indicate that the variable is right-censored.{p_end}
+{synopt :{opt ns:teps(#)}}select the number of steps performed; default and minimum is 3.{p_end}
+{synopt :{opt f:irstc(#)}}select the percentage of observations thrown out during the second step; default is 0.1.{p_end}
+{synopt :{opt s:econdc(#)}}select the percentage of observations thrown out during the third and further steps; default is 0.05.{p_end}
+
+{syntab:Inference}
+{synopt :{opt noboot}}suppress the bootstrap.{p_end}
+{synopt :{opt reps(#)}}perform # bootstrap replications; default is 100.{p_end}
+{synopt :{opt l:evel(#)}}set confidence level; default is {cmd:level(95)}{p_end}
+{synopt :{opt f:irst(#)}}set the lowest quantile that is used for functional inference; default is 0.1.{p_end}
+{synopt :{opt l:ast(#)}}set the highes quantile that is used for functional inference; default is 0.9.{p_end}
+{synopt :{help prefix_saving_option:{bf:{ul:sav}ing(}{it:filename}{bf:, ...)}}}save bootstrap results to {it:filename}; 
+save statistics in double precision; save results to {it:filename} every {it:#} replications{p_end}
+{synopt:{cmdab: cons:_test(}{it:#}[{it:#}[{it:# ...}]]{cmd:)}}add tests of the null hypothesis that the QEs = {it:#} 
+at all estimated quantiles.{p_end}
+
+{syntab:Reporting}
+{synopt :{opt noprint}}suppress table of results.{p_end}
+
+{synoptline}
+{p 4 6 2}
+{cmd:aweight}s, {cmd:fweight}s, {cmd:iweight}s, and {cmd:pweight}s are
+allowed; see {help weight}.{p_end}
+
+
+{title:Description}
+
+{pstd}
+{cmd:counterfactual} estimate the effects of changes in the
+distribution of {it:indepvars} on the distribution of {it:depvar}. It also provides
+procedures to make inference on the counterfactual distribution functions. Both the estimators
+and the inference procedures are described in detail in Chernozhukov, Fernandez-Val and Melly (2008).
+A complete description of the statistical properties of the methods implemented by {cmd:counterfactual}
+can be found in this paper.
+
+{pstd}
+The policy interventions considered by {cmd:counterfactual} consist of counterfactual changes in the
+distribution of covariates related to the outcome. Under the
+assumption that the conditional distribution of the outcome is
+unaltered by the intervention, we obtain uniformly consistent
+estimates for the counterfactual distribution of the outcome and for functionals of this distribution.
+
+{pstd}
+The quantile policy effects (QE) are reported by {cmd:counterfactual}. The options
+{opt quantiles(#)} or {opt qlow(#)}, {opt qhigh(#)} and {opt qstep(#)} can be used to specify the quantiles at which 
+the effects are estimated. By default, the 9 deciles policy effects are estimated.
+However, the marginal distributions are also saved in matrices, which allows to compute
+other functionals, e.g. the Gini coefficient. 
+
+{pstd}
+The estimation of the conditional distribution can be based on several principal approaches for conditional quantile
+and distribution functions, including the linear location shift and location-scale shift models, quantile regression, 
+censored quantile regression, linear probability, logit and probit models for the conditional distribution function
+and proportional hazard models. The option {opt method(string)} allows to select the estimator of the conditional
+distribution. The option {opt nreg(#)} sets the number of regressions used to approximate the conditional
+distribution function.
+
+{pstd}
+The reference and counterfactual populations can be specified in two alternative ways. If the option 
+{opt group(varname)} has been specified, then the population with {it: group}=0 is the reference population
+and the population with {it: group}=1 is the counterfactual population. This means that the conditional model 
+is estimated using the observations with {it: group}=0 and the counterfactual marginal distribution 
+is estimated using the observations with {it: group}=1. Alternatively, the option {opt counterfactual(varlist)}
+can be specified. In this case, the variables {it:indepvars} contain the reference population and the variables
+{it:counterfactual} contain the counterfactual population. This second option should be used when the counterfactual
+population is a deterministic transformation of the reference population. Note that the {opt counterfactual(varlist)}
+must contain exactly the same number of variables as {it:indepvars} and that the order matters.
+
+{pstd}
+Pointwise and simultaneous
+confidence sets for the QEs are also constructed, which
+take into account the sampling variation in the estimation of the
+relationship between the outcome and covariates. 
+The pointwise standard errors are obtained by empirical and weighted bootstrap. The uniform confidence intervals are obtained
+by inverting the Kolmogorov-Smirnov test statistic, whereas the bootstrap is used to estimate the distribution of
+the test statistic. These are functional confidence intervals in the sense
+that null-hypothesis that are outside of the uniform confidence interval at at least one of the estimated
+quantiles are rejected at the pre-specified level.
+The options {opt first(#)} and {opt last(#)} can be used to exclude the tails of the distribution from the 
+functional inference procedure.
+
+{pstd}
+In addition to the uniform confidence bands reported in the main table, the p-values for some null-hypothesis
+and two test-statistics are reported in a second table. Both the Kolmogorov-Smirnov and the Cramer-von-Misses-Smirnov
+statistic are reported. The first null-hypothesis is the correct parametric specification of the conditional model.
+Note that only the implications of the conditional estimation on the unconditional distribution is used. This implies
+that this test may have a low power. It has no power at all for the linear probability and the logit models. 
+The second null hypothesis is that the change in the distribution of the covariates has no effect at all. This is
+stronger than the absence of any mean effect. Other null hypotheses of constant QE (but at a different level than 0)
+can be added with the option {opt cons_test(#)}. The null hypthesis that all QEs are equal to the median policy 
+effect is also tested. Finally, the null-hypotheses that the counterfactual (or observed)
+distribution first order stochastically dominates the observed (or counterfactual) distribution are tested.
+
+
+{title:Options}
+
+{dlgtab:Reference and counterfactual samples}
+
+{phang}
+{opth g:roup(varname)} is a binary variable that selects the reference and counterfactual observations. 
+The conditional model is estimated using the observations with {it: group}=0. The counterfactual
+distribution is estimated using the observations with {it: group}=1. Either the option {opt group}
+or the option {opt counterfactual} must be specified.
+
+{phang}
+{opth c:ounterfactual(varlist)} can also be used to define the reference and counterfactual populations.
+If this option is specified, the conditional distribution of {it: depvar} given {it: indepvars}
+is estimated using the full sample. The counterfactual distribution of the covariates is estimated 
+by the full sample of the variables specified in {it: counterfactual}. Therefore, the same number of variables
+must appear in {it: indepvars} and in {it: counterfactual}. In addition, the order matters in the sense
+that the first {it: indepvars} must corresponds to the first {it: counterfactual} variable, etc.
+
+{dlgtab:Quantiles}
+
+{phang}
+{cmd:quantiles(}{it:#} [{it:#} [{it:#} {it:...}]]{cmd:)} specifies the quantiles at which the effects are 
+estimated and should contain numbers between 0 and 1. 
+Note that the computational time needed to estimate an additional quantile is very short compared to the 
+time needed to estimate the preliminary conditional distribution.
+
+{phang}
+{opt qlow(#)}, {opt qhigh(#)} and {opt qstep(#)} represent an alternative way to choose the quantiles at which the effects are to be 
+estimated. {opt qlow(#)} sets the lowest quantile; default is 0.1. {opt qhigh(#)} set the highest quantile; default is 0.9. {opt qstep(#)} sets the 
+quantile increments; default is 0.1. Note that the information contained in these three options 
+will be used only if {opt quantiles} is not used. 
+
+{dlgtab:Conditional model}
+
+{phang}
+{opt m:ethod(string)}}select the model used to estimate the conditional distribution. The following methods have been implemented: 
+
+{phang2}
+{opt m:ethod(qr)}, which is also the default, select the linear quantile regression estimator of Koenker and Bassett (1978).
+{opt nreg} quantile regressions are estimated. The estimated conditional quantile function is monotonized using the 
+re-arrangement method suggested by Chernozhukov, Fernandez-Val and Galichon (2007). This allows to invert the quantile
+function to obtain the conditional distribution function. This method should be used only with continuous dependent 
+variables.
+
+{phang2}
+{opt m:ethod(loc)} select the linear location shift model. The conditional mean is estimated using OLS.
+The residuals are assumed to be independent from the regressors such that the conditional distribution can be estimated
+by the location shift plus the unconditional distribution of the residuals.
+
+{phang2}
+{opt m:ethod(locsca)} select the linear location-scale model. The logarithm of the variance of the residuals is
+assumed to be a linear function of the variables given in {opth scale(varlist)}.
+The conditional mean is estimated using OLS. The conditional variance is estimated by a second linear regression, 
+that of the logged squared estimated residuals on {it: scale}. Finally, the distribution of the re-scaled residuals is 
+estimated by the unconditional distribution of the re-scaled estimated residuals.
+If the option {opt scale} is not specified, {cmd: counterfactual} assumes that {it: scale} and {it:indepvars} 
+are identical.
+
+{phang2}
+{opt m:ethod(cqr)} select the linear censored quantile regression estimator proposed by Chernozhukov and Hong (2002).
+The censoring variable must be given in {opth c:ensoring(varname)}. By default, this estimator is a three-steps 
+estimator. The number of steps can be increased by the option {opt ns:teps(#)}. In the first step, the censoring
+probabilities are estimated by a parametric logit regression of {it: censoring} on {it: indepvars}. Then, for each
+quantile regression, the observations with sufficiently low censoring probabilities relative to the quantile
+of interest are selected. We allow for misspecification of the logit by excluding the observations that could 
+theoretically be used but have censoring probabilities in the highest {it: firstc} quantiles. In the second step,
+standard linear quantile regressions are estimated on the samples defined in step one. Using the estimated quantile
+regression, we define a new sample of observations that can be used. This sample consists of all observations
+for which the estimated conditional quantile is above the censoring point. Again, we throw away observations in 
+the lowest {it: secondc} quantiles of the distribution of the residuals. Step three consists in a new linear quantile
+regression using the sample defined in step two. Step three is repeated if {opt ns:teps(#)} is above 3.
+The conditional distribution function is obtained using the same procedure as for quantile regression.
+
+{phang2}
+{opt m:ethod(cox)} select the Cox proportional hazard model. The built-in Stata command stcox is called.
+The conditional distribution is calculated using the estimated Cox coefficients and the estimated
+baseline survivor function.
+
+{phang2}
+{opt m:ethod(logit)} select the logit estimator for the conditional distribution. First, {opt nreg} quantiles 
+(uniformly distributed between 0 and 1) of the unconditional distribution of the dependent variable are estimated.
+Then, for each of these quantiles, the conditional distribution function at this level is estimated by a
+logistic regression. This uses the fact that the conditional distribution is the expected value of a binary
+event.
+
+{phang2}
+{opt m:ethod(probit)} select the probit estimator for the conditional distribution. First, {opt nreg} quantiles 
+(uniformly distributed between 0 and 1) of the unconditional distribution of the dependent variable are estimated.
+Then, for each of these quantiles, the conditional distribution function at this level is estimated by a
+probit regression. This uses the fact that the conditional distribution is the expected value of a binary
+event.
+
+{phang2}
+{opt m:ethod(lpm)} select the linear estimator for the conditional distribution. First, {opt nreg} quantiles 
+(uniformly distributed between 0 and 1) of the unconditional distribution of the dependent variable are estimated.
+Then, for each of these quantiles, the conditional distribution function at this level is estimated by an
+OLS regression.
+
+{phang}
+{opt nr:eg(#)} set the number of regressions used to approximate the conditional distribution. 
+For quantile regression, censored quantile regression, the location shift model, and the
+location-scale model, {it: nreg} conditional quantiles uniformly distributed between 0 and 1 are estimated.
+For the distribution estimators (logit, probit and lpm), {it: nreg} quantiles uniformly distributed between 0 and 1 
+of the unconditional distribution are estimated. A distribution regression is estimated for each of this quantile.
+If {it: nreg} is set equal to the number of observations, then all possible distribution regressions are estimated.
+The default is 100. This default value tends to be enough for quantile models but is often too low for the distribution
+regression estimators. {p_end}
+
+{dlgtab:Further options for the location scale model}
+
+{phang}
+{opth sc:ale(varlist)} select the scale variables. In the first step, {it: depvar} is regressed on {it: indepvars}.
+In the second step, the squared residuals are regressed on {it: scale}. By default, {it: scale} contains the
+same variables as {it: indepvars}.
+
+{phang}
+{opth counterscale(varlist)} select the counterfactual scale variables. This option is the counterpart of
+{opth counterfactual(varlist)} and does not need to be specified if the option {opth group(varname)} has
+been specified.
+
+{dlgtab:Further options for the censored regression model}
+
+{phang}
+{opth c:ensoring(varname)} is a variable containing the censoring value for each observation. This allows
+for different censoring values for each observations. If the censoring value is the same for all observations, a
+constant variable must be generated. Note that the implemented estimator assumes that we know the censoring
+value for all observations, even those not censored.
+
+{phang}
+{opt ri:ght}indicate that the dependent variable is right-censored. By default, left-censoring is
+assumed.
+
+{phang}
+{opt ns:teps(#)}select the number of steps performed. The default and minimum number of steps is 3.
+
+{phang}
+{opt f:irstc(#)}select the percentage of observations thrown out during the second step. Increasing this number 
+will make the estimator more robust against misspecification of the censoring probability but less efficient.
+The default is 0.1.
+
+{phang}
+{opt s:econdc(#)}select the percentage of observations thrown out during the third and following steps. 
+Increasing this number 
+will make the estimator more robust against misspecification of the censoring probability but less efficient.
+The default is 0.05.
+
+{dlgtab:Inference}
+
+{phang}
+{opt noboot}suppress the bootstrap. The bootstrap can be very demanding in term of computation time. Therefore,
+it is recommended to switch it off for the exploratory analysis of the data.
+
+{phang}
+{opt reps(#)}select the number of bootstrap replications. This number will matter only if the bootstrap has not
+be suppressed. The default is 100.
+
+{phang}{opt level(#)}; see 
+{helpb estimation options##level():[R] estimation options}.
+
+{phang}
+{opt f:irst(#)} and {opt l:ast(#)} set the part of the distribution used for the inference procedures.
+The tails of the distribution should not be used because standard asymptotic does not apply on these parts.
+The parts that should be excluded depend on the sample size and on the distribution of the dependent variable.
+{opt f:irst(#)} sets the lowest quantile used and {opt l:ast(#)} sets the highest quantile used.
+The default values are 0.1 and 0.9.
+
+{phang}
+{help prefix_saving_option:{bf:saving}({it:filename}[, {it:suboptions}])}
+creates a Stata data file ({opt .dta} file) containing bootstrap replicates.
+
+{phang2}
+{opt double} specifies that the results for each replication be stored as 
+{opt double}s, meaning 8-byte reals.  By default, they are stored as
+{opt float}s, meaning 4-byte reals. 
+
+{phang2}
+{opt every(#)} specifies that results be written to disk every {it:#}th
+replication.  {opt every()} should be specified only in conjunction with 
+{opt saving()} when it takes a long time for each replication.  This
+option will allow recovery of partial results should some other software crash
+your computer.  See {helpb post:[P] postfile}.
+
+{phang2}
+{opt replace} specifies that {it:filename} be overwritten, if it exists.
+
+{phang}
+{cmdab: cons:_test(}{it:#}[{it:#}[{it:# ...}]]{cmd:)}}add 
+tests of the null hypothesis that QE(tau) = {it:#} for all taus between {it: first} and {it: last}.
+The null hypothesis that QE(tau) = 0 for all taus between {it: first} and {it: last} is tested by default.
+The other null hypothesis that the QEs are constant is also tested by default.
+
+{dlgtab:Reporting}
+
+{phang}
+{opt noprint}suppress the tables of results. You may want to use it if you estimate a large number of QEs.
+The results can always be found in the saved matrices.
+
+
+{title:Examples: Engel curves, counterfactual option}
+
+{pstd}Setup{p_end}
+{phang2}{cmd:. use "C:\ado\Personal\engel.dta", clear}{p_end}
+{phang2}{cmd:. summarize income}{p_end}
+{phang2}{cmd:. generate counter_income = r(mean) + 0.75*(income-r(mean))}{p_end}
+
+{pstd}Quantile regression estimator, no inference{p_end}
+{phang2}{cmd:. counterfactual foodexp income, counterfactual(counter_income) noboot}{p_end}
+
+{pstd}Location shift estimator, no inference{p_end}
+{phang2}{cmd:. counterfactual foodexp income, counterfactual(counter_income) method(loc) noboot}{p_end}
+
+{pstd}Logit estimator, no inference{p_end}
+{phang2}{cmd:. counterfactual foodexp income, counterfactual(counter_income) method(logit) noboot}{p_end}
+
+{pstd}Location shift estimator, inference{p_end}
+{phang2}{cmd:. counterfactual foodexp income, counterfactual(counter_income) method(loc)}{p_end}
+{phang2}{cmd:. counterfactual foodexp income, counterfactual(counter_income) method(loc) first(0.05) last(0.95) cons_test(-50 50)}{p_end}
+
+
+{title:Examples: unions, group option}
+
+{pstd}Setup{p_end}
+{phang2}{cmd:. webuse nlsw88, clear}{p_end}
+{phang2}{cmd:. gen lwage=log(wage)}{p_end}
+
+{pstd}Quantile regression estimator, no inference{p_end}
+{phang2}{cmd:. counterfactual lwage tenure ttl_exp grade, group(union) noboot}{p_end}
+
+{pstd}Location estimator, no inference{p_end}
+{phang2}{cmd:. counterfactual lwage tenure ttl_exp grade, group(union) noboot method(loc)}{p_end}
+
+{pstd}Location scale estimator, no inference{p_end}
+{phang2}{cmd:. counterfactual lwage tenure ttl_exp grade, group(union) noboot method(locsca) scale(tenure ttl_exp grade)}{p_end}
+
+{pstd}Logit estimator, no inference{p_end}
+{phang2}{cmd:. counterfactual lwage tenure ttl_exp grade, group(union) noboot method(logit)}{p_end}
+
+{pstd}Probit estimator, no inference{p_end}
+{phang2}{cmd:. counterfactual lwage tenure ttl_exp grade, group(union) noboot method(probit)}{p_end}
+
+{pstd}Linear probability model estimator, no inference{p_end}
+{phang2}{cmd:. counterfactual lwage tenure ttl_exp grade, group(union) noboot method(lpm)}{p_end}
+
+{pstd}Cox estimator, no inference{p_end}
+{phang2}{cmd:. counterfactual lwage tenure ttl_exp grade, group(union) noboot method(cox)}{p_end}
+
+{pstd}Location estimator, inference{p_end}
+{phang2}{cmd:. counterfactual lwage tenure ttl_exp grade, group(union) method(loc)}{p_end}
+
+{pstd}Censored quantile regression estimator, no inference{p_end}
+{phang2}{cmd:. replace lwage=1.2 if lwage<1.2}{p_end}
+{phang2}{cmd:. generate censored=1.2}{p_end}
+{phang2}{cmd:. counterfactual lwage tenure ttl_exp grade, group(union) noboot method(cqr) censoring(censored)}{p_end}
+
+
+{title:Saved results}
+
+{pstd}
+{cmd:counterfactual} saves the following in {cmd:e()}:
+
+{synoptset 15 tabbed}{...}
+{p2col 5 15 19 2: Scalars}{p_end}
+{synopt:{cmd:e(N)}}number of observations{p_end}
+{synopt:{cmd:e(obs0)}}number of observations in the reference group{p_end}
+{synopt:{cmd:e(obsc)}}number of observations in the counterfactual group{p_end}
+{synopt:{cmd:e(nreg)}}number of regressions estimated{p_end}
+
+{synoptset 15 tabbed}{...}
+{p2col 5 15 19 2: Macros}{p_end}
+{synopt:{cmd:e(cmd)}}{cmd:counterfactual}{p_end}
+{synopt:{cmd:e(properties)}}{cmd:b V}{p_end}
+
+{synoptset 15 tabbed}{...}
+{p2col 5 15 19 2: Matrices}{p_end}
+{synopt:{cmd:e(b)}}QEs vector{p_end}
+{synopt:{cmd:e(V)}}variance-covariance matrix of the estimated QES{p_end}
+{synopt:{cmd:e(fit)}}matrix containing the differences between the observed quantiles and the fitted quantiles.
+It can be used to assess the quality of the fit of the parametric model{p_end}
+{synopt:{cmd:e(distributions)}}matrix containing the observed, fitted and counterfactual distributions{p_end}
+{synopt:{cmd:e(quantiles)}}vector of the quantiles at which the QEs have been estimated{p_end}
+{synopt:{cmd:e(qe)}}matrix containing the QEs, their standard errors and uniform confidence bands.{p_end}
+
+
+{synoptset 15 tabbed}{...}
+{p2col 5 15 19 2: Functions}{p_end}
+{synopt:{cmd:e(sample)}}marks estimation sample{p_end}
+{p2colreset}{...}
+
+
+{title:Version requirements}
+
+{p 4 4 2}This command requires Stata 10. In addition the package {cmd:moremata} must be installed. 
+Type {net "describe moremata, from(http://fmwww.bc.edu/repec/bocode/m/)":ssc describe moremata}{txt}
+
+
+{title:Methods and Formulas}
+
+{p 4 6} See Chernozhukov, Fernandez-Val and Melly (2008).
+
+
+{title:Reference}
+
+{phang}
+Victor Chernozhukov, Ivan Fernandez-Val and Alfred Galichon (2007): Quantile and Probability Curves without Crossing.
+MIT Department of Economics Working Paper No. 07-15.
+
+{phang}
+Victor Chernozhukov, Ivan Fernandez-Val and Blaise Melly (2008): Inference on Counterfactual Distributions.
+MIT Department of Economics Working Paper No. 08-16.
+
+{phang}
+Victor Chernozhukov and Han Hong (2002): Three-step Censored Quantile Regression and Extramarital Affairs.
+Journal of the American Statistical Association, 97, 872-881.
+
+{phang}
+Roger Koenker and Gilbert Bassett (1978): Regression quantiles. Econometrica, 46, 33-50.
+
+
+{title:Remarks}
+
+{p 4 4}This is a first and preliminary version. Please feel free to share your comments, reports of bugs and
+propositions for extensions.
+
+{p 4 4}If you use this command in your work, please cite Victor Chernozhukov, Ivan Fernandez-Val and Blaise Melly (2008).
+
+
+{title:Disclaimer}
+
+{p 4 4 2}THIS SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESSED 
+OR IMPLIED. THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE PROGRAM IS WITH YOU. 
+SHOULD THE PROGRAM PROVE DEFECTIVE, YOU ASSUME THE COST OF ALL NECESSARY SERVICING, REPAIR OR CORRECTION.
+
+{p 4 4 2}IN NO EVENT WILL THE COPYRIGHT HOLDERS OR THEIR EMPLOYERS, OR ANY OTHER PARTY WHO
+MAY MODIFY AND/OR REDISTRIBUTE THIS SOFTWARE, BE LIABLE TO YOU FOR DAMAGES, INCLUDING ANY 
+GENERAL, SPECIAL, INCIDENTAL OR CONSEQUENTIAL DAMAGES ARISING OUT OF THE USE OR INABILITY TO USE THE PROGRAM.
+
+
+{title:Authors}
+
+{p 4 6}Victor Chernozhukov, Ivan Fernandez-Val and Blaise Melly{p_end}
+{p 4 6}MIT, Boston University and Brown University{p_end}
+{p 4 6}blaise_melly@brown.edu{p_end}

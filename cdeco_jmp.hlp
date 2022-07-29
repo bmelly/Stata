@@ -1,0 +1,409 @@
+{smcl}
+{* *! version 1.0.0  5mar2010}{...}
+{cmd:help cdeco_jmp} 
+{hline}
+
+{title:Title}
+
+{p2colset 5 25 22 2}{...}
+{p2col :{hi: cdeco_jmp} {hline 2}}Counterfactual decomposition of differences in distributions à la Juhn, Murphy and Pierce (1993){p_end}
+{p2colreset}{...}
+
+
+{title:Syntax}
+
+{p 7 16 2}
+{opt cdeco_jmp} {depvar} {indepvars} {ifin} {weight}
+   	{cmd:,} {opt group(varname)}
+	[{it:options}]
+
+{synoptset 25 tabbed}{...}
+{synopthdr}
+{synoptline}
+
+{syntab:Groups}
+{synopt :{opth g:roup(varname)}}specifies the groups; this option is required.{p_end}
+
+{syntab:Quantiles}
+{synopt:{opth q:uantiles(numlist)}}sets the quantile(s) at which the decomposition will be estimated.{p_end}
+
+{syntab:Conditional model}
+{synopt :{opt m:ethod(string)}}select the model used to estimate the conditional distribution. The following methods have been implemented: 
+{opt qr} (the default), {opt loc}, {opt locsca}, {opt cqr}.{p_end}
+{synopt:{opt nr:eg(#)}}sets the number of regressions estimated to approximate the conditional distribution; default is 100.{p_end}
+
+{syntab:Further options for the location scale model}
+{synopt :{opth sc:ale(varlist)}}select the scale variables for the location-scale model.{p_end}
+
+{syntab:Further options for the censored regression model}
+{synopt :{opth c:ensoring(varname)}}gives the censoring value for each observations.{p_end}
+{synopt :{opt ri:ght}}indicate that the variable is right-censored.{p_end}
+{synopt :{opt ns:teps(#)}}select the number of steps performed; default and minimum is 3.{p_end}
+{synopt :{opt f:irstc(#)}}select the percentage of observations thrown out during the second step; default is 0.1.{p_end}
+{synopt :{opt s:econdc(#)}}select the percentage of observations thrown out during the third and further steps; default is 0.05.{p_end}
+
+{syntab:Inference}
+{synopt :{opt noboot}}suppress the bootstrap.{p_end}
+{synopt :{opt reps(#)}}perform # bootstrap replications; default is 100.{p_end}
+{synopt :{opt l:evel(#)}}set confidence level; default is {cmd:level(95)}{p_end}
+{synopt :{opt f:irst(#)}}set the lowest quantile that is used for functional inference; default is 0.1.{p_end}
+{synopt :{opt l:ast(#)}}set the highes quantile that is used for functional inference; default is 0.9.{p_end}
+{synopt :{help prefix_saving_option:{bf:{ul:sav}ing(}{it:filename}{bf:, ...)}}}save bootstrap results to {it:filename}; 
+save statistics in double precision; save results to {it:filename} every {it:#} replications{p_end}
+{synopt:{cmdab: cons:_test(}{it:#}[{it:#}[{it:# ...}]]{cmd:)}}add tests of the null hypothesis that the QEs = {it:#} 
+at all estimated quantiles.{p_end}
+
+{syntab:Reporting}
+{synopt :{opt noprint}}suppresses all tables of results.{p_end}
+{synopt :{opt noprintdeco}}suppresses the tables containing the decompostion.{p_end}
+{synopt :{opt noprinttest}}suppresses the tables containing the tests.{p_end}
+{synopt :{opt l:evel(#)}}set confidence level; default is {cmd:level(95)}.{p_end}
+
+{synoptline}
+{p 4 6 2}
+{cmd:aweight}s, {cmd:fweight}s, {cmd:iweight}s, and {cmd:pweight}s are
+allowed; see {help weight}.{p_end}
+
+
+{title:Description}
+
+{pstd}
+{cmd:cdeco_jmp} decomposes the differences between the quantile function of {it:depvar}
+when {it:group} is equal to 0 and the quantile function of {it:depvar}
+when {it:group} is equal to 1. Two counterfactual distributions are
+estimated by {cmd:cdeco_jmp}. First, the distribution based on the characteristics distribution for 
+the group with {it:groupvar}==1,
+the median or mean coefficients from the group with {it:groupvar}==1, and the residual distribution from
+the group with {it:groupvar}==0 is estimated. Second, the distribution based on the characteristics distribution for 
+the group with {it:groupvar}==1 and the conditional distribution of the {it:depvar} from the group with {it:groupvar}==0 is estimated.
+These counterfactual distributions are used to decomposes differences in distribution 
+into three components (residuals, median coefficients and characteristics).
+
+{pstd}
+This type of decomposition has been suggested by Juhn, Murphy and Pierce (1993, JMP thereafter). 
+The original JMP decomposition is implemented if {opt method(loc)} is selected. 
+In this case, the coefficients are estimated by a linear mean regression. The distribution of the residuals
+is estimated independently of the {it:indepvars} by the unconditional distribution of the estimated residuals.
+Therefore, the distribution of {it:depvar} is a function of the distribution of the {it:indepvars},
+the OLS coefficients and the distribution of the residuals (assumed to be independent from the {it:indepvars}).
+We obtain the decomposition by changing sequentially each of these elements.
+
+{pstd}
+Melly (2005) and Autor, Katz and Kearney (2005) suggest estimating the distribution of the
+residuals by a family of quantile regressions. This avoids assuming that the residuals are independent
+from the covariates. This decomposition is implemented if {opt method(qr)} is selected. 
+In the first step, the distribution of {it:depvar} conditional on {it:indepvars} 
+is estimated using linear quantile regression (see Koenker (2005) and {help qreg} 
+for more information on quantile regression and its implementation in Stata). The conditional 
+distribution is approximated by {opt nqreg} quantile regressions. 
+Therefore, the distribution of {it:depvar} is a function of the distribution of the {it:indepvars},
+the median regression coefficients, and the other quantile regression coefficients (that estimate
+the conditional distribution of the the residuals).
+We obtain the decomposition by changing sequentially each of these elements.
+
+{pstd}
+Two additional methods can be selected to estimate the conditional distribution of the dependent variable:
+the location-scale shift model and the censored quantile regression model.
+
+{pstd}
+This estimator is a special case of the class of estimators covered by Chernozhukov, Fernandez-Val
+and Melly (2009). Therefore, its statistical properties as well as the validity of the bootstrap follow from
+their results. The inference procedures are described in detail in Chernozhukov, Fernandez-Val and Melly (2008).
+Pointwise and simultaneous
+confidence sets for the QEs are constructed, which
+take into account the sampling variation in the estimation of the
+relationship between the outcome and covariates. 
+The pointwise standard errors are obtained by the empirical bootstrap. The uniform confidence intervals are obtained
+by inverting the Kolmogorov-Smirnov test statistic, whereas the bootstrap is used to estimate the distribution of
+the test statistic. These are functional confidence intervals in the sense
+that null-hypothesis that are outside of the uniform confidence interval at at least one of the estimated
+quantiles are rejected at the pre-specified level.
+The options {opt first(#)} and {opt last(#)} can be used to exclude the tails of the distribution from the 
+functional inference procedure.
+
+{pstd}
+In addition to the uniform confidence bands reported in the main table, the p-values for some null-hypothesis
+and two test-statistics are reported in a second table. Both the Kolmogorov-Smirnov and the Cramer-von-Misses-Smirnov
+statistic are reported. The first null-hypotheses are the correct parametric specification of the conditional model.
+Note that only the implications of the conditional estimation on the unconditional distribution is used. This implies
+that this test may have a low power.
+The second set of null hypotheses is that there are no difference at all. This is
+stronger than the absence of any mean effect. Other null hypotheses of constant QE (but at a different level than 0)
+can be added with the option {opt cons_test(#)}. The null hypthesis that all QEs are equal to the median policy 
+effect is also tested. Finally, both null-hypotheses of first-order stochastic dominance are tested.
+
+
+{title:Options}
+
+{dlgtab:Groups}
+
+{phang}
+{opth g:roup(varname)} is a binary variable that selects the two groups. 
+The counterfactual distribution is estimated using the covariates with {it: group}=1 and the conditional model
+in the {it: group}=0 sample.
+
+{dlgtab:Quantiles}
+
+{phang}
+{opt quantiles(numlist)} specifies the quantiles at which the effects are 
+estimated and should contain numbers between 0 and 1. 
+Note that the computational time needed to estimate an additional quantile is very short compared to the 
+time needed to estimate the preliminary conditional model. By default, the 9 deciles are estimated
+
+{dlgtab:Conditional model}
+
+{phang}
+{opt m:ethod(string)}}select the model used to estimate the conditional distribution. The following methods have been implemented: 
+
+{phang2}
+{opt m:ethod(qr)}, which is also the default, select the linear quantile regression estimator of Koenker and Bassett (1978).
+{opt nreg} quantile regressions are estimated. The estimated conditional quantile function is monotonized using the 
+re-arrangement method suggested by Chernozhukov, Fernandez-Val and Galichon (2007). This allows to invert the quantile
+function to obtain the conditional distribution function. This method should be used only with continuous dependent 
+variables.
+
+{phang2}
+{opt m:ethod(loc)} select the linear location shift model. The conditional mean is estimated using OLS.
+The residuals are assumed to be independent from the regressors such that the conditional distribution can be estimated
+by the location shift plus the unconditional distribution of the residuals.
+
+{phang2}
+{opt m:ethod(locsca)} select the linear location-scale model. The logarithm of the variance of the residuals is
+assumed to be a linear function of the variables given in {opth scale(varlist)}.
+The conditional mean is estimated using OLS. The conditional variance is estimated by a second linear regression, 
+that of the logged squared estimated residuals on {it: scale}. Finally, the distribution of the re-scaled residuals is 
+estimated by the unconditional distribution of the re-scaled estimated residuals.
+If the option {opt scale} is not specified, {cmd: cdeco} assumes that {it: scale} and {it:indepvars} 
+are identical.
+
+{phang2}
+{opt m:ethod(cqr)} select the linear censored quantile regression estimator proposed by Chernozhukov and Hong (2002).
+The censoring variable must be given in {opth c:ensoring(varname)}. By default, this estimator is a three-steps 
+estimator. The number of steps can be increased by the option {opt ns:teps(#)}. In the first step, the censoring
+probabilities are estimated by a parametric logit regression of {it: censoring} on {it: indepvars}. Then, for each
+quantile regression, the observations with sufficiently low censoring probabilities relative to the quantile
+of interest are selected. We allow for misspecification of the logit by excluding the observations that could 
+theoretically be used but have censoring probabilities in the highest {it: firstc} quantiles. In the second step,
+standard linear quantile regressions are estimated on the samples defined in step one. Using the estimated quantile
+regression, we define a new sample of observations that can be used. This sample consists of all observations
+for which the estimated conditional quantile is above the censoring point. Again, we throw away observations in 
+the lowest {it: secondc} quantiles of the distribution of the residuals. Step three consists in a new linear quantile
+regression using the sample defined in step two. Step three is repeated if {opt ns:teps(#)} is above 3.
+The conditional distribution function is obtained using the same procedure as for quantile regression.
+
+{phang}
+{opt nr:eg(#)} set the number of regressions used to approximate the conditional distribution. 
+{it: nreg} conditional quantiles uniformly distributed between 0 and 1 are estimated.
+The default is 100.{p_end}
+
+{dlgtab:Further options for the location scale model}
+
+{phang}
+{opth sc:ale(varlist)} select the scale variables. In the first step, {it: depvar} is regressed on {it: indepvars}.
+In the second step, the squared residuals are regressed on {it: scale}. By default, {it: scale} contains the
+same variables as {it: indepvars}.
+
+{dlgtab:Further options for the censored regression model}
+
+{phang}
+{opth c:ensoring(varname)} is a variable containing the censoring value for each observation. This allows
+for different censoring values for each observations. If the censoring value is the same for all observations, a
+constant variable must be generated. Note that the implemented estimator assumes that we know the censoring
+value for all observations, even those not censored.
+
+{phang}
+{opt ri:ght}indicate that the dependent variable is right-censored. By default, left-censoring is
+assumed.
+
+{phang}
+{opt ns:teps(#)}select the number of steps performed. The default and minimum number of steps is 3.
+
+{phang}
+{opt f:irstc(#)}select the percentage of observations thrown out during the second step. Increasing this number 
+will make the estimator more robust against misspecification of the censoring probability but less efficient.
+The default is 0.1.
+
+{phang}
+{opt s:econdc(#)}select the percentage of observations thrown out during the third and following steps. 
+Increasing this number 
+will make the estimator more robust against misspecification of the censoring probability but less efficient.
+The default is 0.05.
+
+{dlgtab:Inference}
+
+{phang}
+{opt noboot}suppress the bootstrap. The bootstrap can be very demanding in term of computation time. Therefore,
+it is recommended to switch it off for the exploratory analysis of the data.
+
+{phang}
+{opt reps(#)}select the number of bootstrap replications. This number will matter only if the bootstrap has not
+be suppressed. The default is 100.
+
+{phang}{opt level(#)}; see 
+{helpb estimation options##level():[R] estimation options}.
+
+{phang}
+{opt f:irst(#)} and {opt l:ast(#)} set the part of the distribution used for the inference procedures.
+The tails of the distribution should not be used because standard asymptotic does not apply on these parts.
+The parts that should be excluded depend on the sample size and on the distribution of the dependent variable.
+{opt f:irst(#)} sets the lowest quantile used and {opt l:ast(#)} sets the highest quantile used.
+The default values are 0.1 and 0.9.
+
+{phang}
+{help prefix_saving_option:{bf:saving}({it:filename}[, {it:suboptions}])}
+creates a Stata data file ({opt .dta} file) containing bootstrap replicates.
+
+{phang2}
+{opt double} specifies that the results for each replication be stored as 
+{opt double}s, meaning 8-byte reals.  By default, they are stored as
+{opt float}s, meaning 4-byte reals. 
+
+{phang2}
+{opt every(#)} specifies that results be written to disk every {it:#}th
+replication.  {opt every()} should be specified only in conjunction with 
+{opt saving()} when it takes a long time for each replication.  This
+option will allow recovery of partial results should some other software crash
+your computer.  See {helpb post:[P] postfile}.
+
+{phang2}
+{opt replace} specifies that {it:filename} be overwritten, if it exists.
+
+{phang}
+{cmdab: cons:_test(}{it:#}[{it:#}[{it:# ...}]]{cmd:)}}add 
+tests of the null hypothesis that QE(tau) = {it:#} for all taus between {it: first} and {it: last}.
+The null hypothesis that QE(tau) = 0 for all taus between {it: first} and {it: last} is tested by default.
+The other null hypothesis that the QEs are constant is also tested by default.
+
+{dlgtab:Reporting}
+
+{phang}
+{opt noprint}suppresses all tables of results. You may want to use it if you estimate a large number of QEs.
+The results can always be found in the saved matrices. This option is similar to activating {opt noprintdeco}
+and {opt noprinttest}.
+
+{phang}
+{opt noprintdeco}suppresses the tables containing the decomposition but not the tables containing the tests. 
+
+{phang}
+{opt noprinttest}suppresses the tables containing the tests but not the tables containing the decomposition. 
+
+
+{title:Saved results}
+
+{pstd}
+{cmd:cdeco} saves the following in {cmd:e()}:
+
+{synoptset 15 tabbed}{...}
+{p2col 5 15 19 2: Scalars}{p_end}
+{synopt:{cmd:e(N)}}number of observations{p_end}
+{synopt:{cmd:e(obs0)}}number of observations in the {it:group}==0 sample.{p_end}
+{synopt:{cmd:e(obs1)}}number of observations in the {it:group}==1 sample.{p_end}
+{synopt:{cmd:e(nreg0)}}number of regressions effectively estimated in the {it:group}==0 sample.{p_end}
+{synopt:{cmd:e(nreg1)}}number of regressions effectively estimated in the {it:group}==1 sample.{p_end}
+
+{synoptset 15 tabbed}{...}
+{p2col 5 15 19 2: Macros}{p_end}
+{synopt:{cmd:e(cmd)}}{cmd:cdeco}{p_end}
+{synopt:{cmd:e(properties)}}{cmd:b V}{p_end}
+
+{synoptset 15 tabbed}{...}
+{p2col 5 15 19 2: Matrices}{p_end}
+{synopt:{cmd:e(quantiles)}}vector of the quantiles at which the decomposition has been estimated.{p_end}
+{synopt:{cmd:e(b)}}vector of length 3 * number of quantiles. The first nq numbers contain the total difference.
+The second set of nq numbers contains the effects of characteristics. The third set of nq numbers contains the effect
+of coefficients.{p_end}
+{synopt:{cmd:e(V)}}variance-covariance matrix of the vector {cmd:e(b)}.{p_end}
+{synopt:{cmd:e(total_difference)}}matrix containing the differences the observable distributions estimated using the 
+conditional models, pointwise standard errors and uniform confidence bands.{p_end}
+{synopt:{cmd:e(characteristics)}}matrix containing the effects of characteristics, pointwise 
+standard errors and uniform confidence bands.{p_end}
+{synopt:{cmd:e(coefficients)}}matrix containing the effects of coefficients, pointwise 
+standard errors and uniform confidence bands.{p_end}
+{synopt:{cmd:e(residuals)}}matrix containing the effects of residuals, pointwise 
+standard errors and uniform confidence bands.{p_end}
+{synopt:{cmd:e(misspecification_0)}}matrix containing the differences between the observed distribution and the
+estimated distribution, pointwise standard errors and uniform confidence bands.{p_end}
+{synopt:{cmd:e(misspecification_1)}}matrix containing the differences between the observed distribution and the
+estimated distribution, pointwise standard errors and uniform confidence bands.{p_end}
+{synopt:{cmd:e(observed_0)}}matrix containing the observed distribution for {it:group}==0, pointwise 
+standard errors and uniform confidence bands. Note that the conditional model has not been used.{p_end}
+{synopt:{cmd:e(observed_1)}}matrix containing the observed distribution for {it:group}==1, pointwise 
+standard errors and uniform confidence bands. Note that the conditional model has not been used.{p_end}
+{synopt:{cmd:e(fitted_0)}}matrix containing the estimated distribution for {it:group}==0, pointwise 
+standard errors and uniform confidence bands. Note that the conditional model has been used.{p_end}
+{synopt:{cmd:e(fitted_1)}}matrix containing the estimated distribution for {it:group}==1, pointwise 
+standard errors and uniform confidence bands. Note that the conditional model has been used.{p_end}
+{synopt:{cmd:e(counterfactual1)}}matrix containing the estimated counterfactual distribution, pointwise 
+standard errors and uniform confidence bands. Note that the conditional model from {it:group}==0
+and the covariates distribution from {it:group}==1 have been used.{p_end}
+{synopt:{cmd:e(counterfactual2)}}matrix containing the estimated counterfactual distribution, pointwise 
+standard errors and uniform confidence bands. Note that the median or mean coefficients from {it:group}==0,
+the residual distribution from {it:group}==00 and the covariates distribution from {it:group}==1 have been used.{p_end}
+{synopt:{cmd:e(coef0)}}matrix containing the coefficients of the conditional model for {it:group}==0.{p_end}
+{synopt:{cmd:e(coef1)}}matrix containing the coefficients of the conditional model for {it:group}==1.{p_end}
+
+{synoptset 15 tabbed}{...}
+{p2col 5 15 19 2: Functions}{p_end}
+{synopt:{cmd:e(sample)}}marks estimation sample{p_end}
+{p2colreset}{...}
+
+
+{title:Version requirements}
+
+{p 4 4 2}This command requires Stata 9.2. In addition the package {cmd:moremata} must be installed. 
+Type {net "describe moremata, from(http://fmwww.bc.edu/repec/bocode/m/)":ssc describe moremata}{txt}
+
+
+{title:Reference}
+
+{phang}
+David Autor, Lawrence Katz and Melissa Kearney (2005): Rising wage inequality: the role of composition and prices.
+NBER Working Paper No. 11628.
+
+{phang}
+Victor Chernozhukov, Ivan Fernandez-Val and Alfred Galichon (2007): Quantile and Probability Curves without Crossing.
+MIT Department of Economics Working Paper No. 07-15.
+
+{phang}
+Victor Chernozhukov, Ivan Fernandez-Val and Blaise Melly (2008): Inference on cdeco Distributions.
+MIT Department of Economics Working Paper No. 08-16.
+
+{phang}
+Victor Chernozhukov and Han Hong (2002): Three-step Censored Quantile Regression and Extramarital Affairs.
+Journal of the American Statistical Association, 97, 872-881.
+
+{p 4 6} Chinhui Juhn, Kevin M. Murphy and Brooks Pierce (1993):
+Wage Inequality and the Rise in Returns to Skill.
+The Journal of Political Economy, 101(3), pp. 410-442.
+
+{phang}
+Roger Koenker and Gilbert Bassett (1978): Regression quantiles. Econometrica, 46, 33-50.
+
+{p 4 6} Blaise Melly (2005): Decomposition of differences in distribution using quantile regression. 
+Labour Economics, 12, 577-590.
+
+
+{title:Remarks}
+
+{p 4 4}This is a first and preliminary version. Please feel free to share your comments, reports of bugs and
+propositions for extensions.
+
+{p 4 4}If you use this command in your work, please cite Melly (2005) or Chernozhukov, Fernandez-Val and Melly (2008).
+
+
+{title:Disclaimer}
+
+{p 4 4 2}THIS SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESSED 
+OR IMPLIED. THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE PROGRAM IS WITH YOU. 
+SHOULD THE PROGRAM PROVE DEFECTIVE, YOU ASSUME THE COST OF ALL NECESSARY SERVICING, REPAIR OR CORRECTION.
+
+{p 4 4 2}IN NO EVENT WILL THE COPYRIGHT HOLDERS OR THEIR EMPLOYERS, OR ANY OTHER PARTY WHO
+MAY MODIFY AND/OR REDISTRIBUTE THIS SOFTWARE, BE LIABLE TO YOU FOR DAMAGES, INCLUDING ANY 
+GENERAL, SPECIAL, INCIDENTAL OR CONSEQUENTIAL DAMAGES ARISING OUT OF THE USE OR INABILITY TO USE THE PROGRAM.
+
+
+{title:Authors}
+
+{p 4 6}Victor Chernozhukov, Ivan Fernandez-Val and Blaise Melly{p_end}
+{p 4 6}MIT, Boston University and Brown University{p_end}
+{p 4 6}blaise_melly@brown.edu{p_end}
