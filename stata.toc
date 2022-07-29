@@ -1,8 +1,13 @@
-v 1.0
-d Programs Written for Use in Finance and Allied Desciplines
-d Author: Dr. Attaullah Shah
-p asrol Finds descriptive statistics in a user's defined rolling window even in unbalanced panel data
-p ascol Convert stock returns or prices from daily to weekly, monthly, quarterly, or yearly frequency
-p dup Tags duplicates and drops them
-p mttest performs t-tests on dependent variable by above and velow median values of independent variables
-
+v 3
+d Programs by Blaise Melly 
+d Blaise Melly, Department of Economics, University of Bern
+d Email: mellyblaise@gmail.com
+d Some of these programs are the work of several people.
+p ivqte Estimation of quantile treatment effects
+p rddqte QTE in the regression discontinuity design
+p counterfactual Inference on counterfactual distributions
+p rqdeco Decomposition of differences in distribution
+p nplate Nonparametric mean IV estimation
+p qrprocess Quantile Regression: quick algorithms, pointwise and functional inference
+p drprocess Distribution Regression: quick algorithms, pointwise and functional inference
+p cic Changes-in-changes with covariates
