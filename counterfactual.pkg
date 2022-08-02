@@ -2,11 +2,11 @@ v 3
 d Inference on counterfactual distributions
 d
 d The Stata commands counterfactual, cdeco and cdeco_jmp implement the estimators 
-d suggested in {browse "http://ideas.repec.org/p/ifs/cemmap/09-09.html":Chernozhukov, Fern·ndez-Val and Melly (2009)}.
-d The command counterfactual estimate the effects of changes in the distribution of
+d suggested in {browse "https://doi.org/10.3982/ECTA10582":Chernozhukov, Fernandez-Val and Melly (2013)}.
+d The command counterfactual estimates the effects of changes in the distribution of the
 d covariates on the distribution of the dependent variable. It also provides procedures
-d to make inference on the counterfactual distribution functions. The cdeco uses the
-d counterfactual distribution to decompose the differences between two observable quantile functions. 
+d to make inference on the counterfactual distribution functions. The cdeco command uses the
+d counterfactual distribution to decompose the difference between two observable quantile functions. 
 d This is similar in principle to the famous Oaxaca/Blinder decomposition of the quantile differences.
 d The cdeco_jmp command implements a decomposition in three components: characteristics, median 
 d coefficients and residuals. This is similar to the Juhn, Murphy and Pierce decomposition.
@@ -14,7 +14,7 @@ d
 d Distribution-Date: 20100519
 d
 d {bf:Victor Chernozhukov, MIT}
-d {bf:Iv·n Fern·ndez-Val, Boston University}
+d {bf:Iv√°n Fern√°ndez-Val, Boston University}
 d {bf:Blaise Melly, University of Bern}
 d Support: email mellyblaise@gmail.com
 f counterfactual.ado
@@ -23,7 +23,4 @@ f cdeco.ado
 f cdeco.hlp
 f cdeco_jmp.ado
 f cdeco_jmp.hlp
-f example_counterfactual.do
-f example_cdeco.do
-f example_cdeco_jmp.do
-* f code_counter_files/engel.dta
+f engel.dta
