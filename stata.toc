@@ -5,10 +5,10 @@ d Email: mellyblaise@gmail.com
 d Some of these programs are the work of several people.
 p cic Changes-in-changes with covariates
 p counterfactual Inference on counterfactual distributions
-p drprocess Distribution Regression: quick algorithms, pointwise and functional inference
+p drprocess Distribution regression
 p ivqte Estimation of quantile treatment effects
 p mdqr Minimum distance quantile regression
 p nplate Nonparametric mean IV estimation
-p qrprocess Quantile Regression: quick algorithms, pointwise and functional inference
+p qrprocess Quantile regression
 p rddqte QTE in the regression discontinuity design
 p rqdeco Decomposition of differences in distribution
