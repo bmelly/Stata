@@ -13,7 +13,7 @@ d decomposition. d The cdeco_jmp command implements a similar decomposition into
 d components: characteristics, median coefficients and residuals. This is the quantile
 d analog of the Juhn, Murphy and Pierce (1993) decomposition.
 d
-d Distribution-Date: 20220802
+d Distribution-Date: 20220803
 d
 d {bf:Victor Chernozhukov, MIT}
 d {bf:Ivan Fernandez-Val, Boston University}
