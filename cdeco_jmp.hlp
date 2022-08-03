@@ -6,7 +6,7 @@
 {title:Title}
 
 {p2colset 5 25 22 2}{...}
-{p2col :{hi: cdeco_jmp} {hline 2}}Counterfactual decomposition of differences in distributions à Juhn, Murphy and Pierce (1993){p_end}
+{p2col :{hi: cdeco_jmp} {hline 2}}Counterfactual decomposition of differences in distributions à la Juhn, Murphy and Pierce (1993){p_end}
 {p2colreset}{...}
 
 
