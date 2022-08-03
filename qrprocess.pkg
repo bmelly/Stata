@@ -4,7 +4,7 @@ d
 d The Stata command qrprocess offers additional tools for the estimation of
 d and inference on quantile regression models.
 d
-d Distribution-Date: 20210529
+d Distribution-Date: 20220803
 d
 d {bf:Blaise Melly, Bern University}
 d Support: email mellyblaise@gmail.com
