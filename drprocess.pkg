@@ -12,5 +12,5 @@ f drprocess.ado
 f drprocess_p.ado
 f plotprocess.ado
 f drprocess.hlp
-f drprocess_postestimation.sthlp
+f drprocess_postestimation.hlp
 f plotprocess.hlp
