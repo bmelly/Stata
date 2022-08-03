@@ -1,5 +1,5 @@
 {smcl}
-{* 27July2022}{...}
+{* 03aug2022}{...}
 {cmd:help mdqr}
 {hline}
 
@@ -140,15 +140,19 @@ which allows saving the fitted values from the first stage. Later it is then
 possible to estimate only the second step by providing the previously estimated
 results with the option {cmd:load_first}.
 
+{pstd}The command {cmd:plotprocess}, which is included in the package 
+{cmd:qrprocess}, can be used after {cmd:mdqr} to plot the coefficients and their
+confidence intervals. See {help plotprocess} and {help mdqr##examples:Example 1 below}. For the moment,
+only pointwise confidence intervals are available.
+
 
 {title:Options}
 
 {dlgtab:Group}
 
-{phang} {opth group(varlist:groupvar)} specifies the variable(s)
+{phang} {opth group(varlist)} specifies the variable(s)
 that define the groups. This "option" is required. {it:varlist} may
 contain numeric variables, string variables, or a combination of the two. 
-{p_end}
 
 {phang} {opth n_small(#)} provides the cut-off below which groups are excluded.
 More precisely, {cmd:mdqr} excludes a group when the remaining number of
@@ -159,7 +163,7 @@ By default, {cmd:n_small(1)}.
 
 {dlgtab:First stage estimation}
 
-{phang} {opt quantiles(numlist)} specifies the quantile indexes at which the regressions
+{phang} {opth quantiles(numlist)} specifies the quantile indexes at which the regressions
 are estimated and should contain numbers between 0 and 1.  By default, {cmd:quantiles()} is
 set to "0.1 0.25 0.5 0.75 0.9".
 
@@ -168,14 +172,14 @@ the first stage quantile regression estimation command.
 For instance, it is possible to modify the quantile regression algorithm.
 The syntax must correspond to the options accepted by {help qrprocess}.
 
-{phang} When the option {opt save_first(newvarname)} is specified,
+{phang} When the option {opth save_first(newvarname)} is specified,
 the first stage fitted values will be saved. {cmd:mdqr} will
 generate as many variables as the number of quantiles provided by
 the option {cmd:quantiles}. The name of these variables is
 provided by the content of the option {opt save_first} plus a 
 quantile index as suffix.
 
-{phang} {opt load_first(varname)} provides the suffix of the variables
+{phang} {opth load_first(varname)} provides the suffix of the variables
 containing the quantile regression estimates from the first stage.
 
 {dlgtab:Second stage estimation}
@@ -201,16 +205,16 @@ errors are clustered at the level of the group or at a higher level. The options
 {dlgtab:Inference}
 
 {phang}
-{opt cluster(varname:clustvar}}specify that the standard errors allow for intracluster
-correlation. As discussed above, {it clustvar} must nest the groups, that is
+{opth cluster(varname}}specify that the standard errors allow for intracluster
+correlation. As discussed above, {it varname} must nest the groups, that is
 it must be constant within groups. Both the analytical and the bootstrap
 standard errors will take clustering into account.
 
 {phang}
-{opt bootstrap(string:string)} specifies the {help bootstrap} prefix used in the
+{opth bootstrap(string)} specifies the {help bootstrap} prefix used in the
 second stage. This option must contain the whole prefix as defined in {help bootstrap}.
 This allows, for instance, to change the number of replications. The clustering
-variable cannot be modified with this option. Use the option {cmd cluster}
+variable cannot be modified with this option. Use the option {cmd:cluster}
 instead.
 
 {dlgtab:Reporting}
@@ -320,7 +324,8 @@ default is set by {cmd:set level}; see
 {synopt:{cmd:e(N_groups)}}number of groups{p_end}
 
 {phang}Macros{p_end}
-{synopt:{cmd:e(command)}}{cmd:mdqr}{p_end}
+{synopt:{cmd:e(cmd)}}{cmd:mdqr}{p_end}
+{synopt:{cmd:e(plotprocess)}}inputs for {cmd:plotprocess}{p_end}
 {synopt:{cmd:e(cmdline)}}command as typed{p_end}
 {synopt:{cmd:e(title)}}Minimum distance quantile Regression{p_end}
 {synopt:{cmd:e(depvar)}}name of dependent variable{p_end}
@@ -346,10 +351,10 @@ default is set by {cmd:set level}; see
 {title:Version requirements}
 
 {pstd}This command requires Stata 9.2 or later.  Stata 11 is required to use
-factor variables.  {cmd:qrprocess} is required; type {cmd:net install qrprocess, from("https://sites.google.com/site/mellyblaise/")}
+factor variables.  {cmd:qrprocess} is required; type {stata `"net install qrprocess, from("https://raw.githubusercontent.com/bmelly/Stata/main/")"'}
 to install this package. Finally, {cmd:qrprocess}
 itself requires the package {cmd:moremata} (see Jann [2005b]). 
-Type {cmd:ssc install moremata} to install it.
+Type {stata "ssc install moremata"} to install it.
 
 
 {title:Methods and formulas}
