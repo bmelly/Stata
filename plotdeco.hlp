@@ -1,0 +1,141 @@
+{smcl}
+{* *! version 1..0  03aug2022}{...}
+
+{title:Title}
+
+{p2colset 5 19 19 2}{...}
+{p2col :{hi:plotdeco} {hline 2}}Visualizing quantile decompositions{p_end}
+{p2colreset}{...}
+
+{marker syntax}{...}
+{title:Syntax}
+
+{p 8 13 2}
+{cmd:plotdeco} [{it:namelist}] [{cmd:,} {it:{help plotdeco##interval:intervaltype}} {cmd:level(#)} {it:{help plotdeco##graphical:graph_options}} ] 
+
+ where {it: namelist} can contain "all" (to visualize all the components of the decomposition
+ or the names of the components of the decomposition.
+	
+{synoptset 30 tabbed}{...}
+{marker interval}{...}
+{synopthdr :intervaltype}
+{synoptline}
+{synopt :{opt p:ointwise}}requires that only the pointwise confidence intervals are added to the plot, the default if the functional bands have not been estimated.{p_end}
+{synopt :{opt u:niform}}requires that only the uniform confidence bands are added to the plot.{p_end}
+{synopt :{opt b:oth}}requires that only the uniform confidence bands are added to the plot, the defulat if the functional bands have been estimated.{p_end}
+{synopt :{opt n:one}}requires that only the uniform confidence bands are added to the plot.{p_end}
+{synoptline}
+{p2colreset}{...}
+
+{synoptset 30 tabbed}{...}
+{marker level}{...}
+{synopthdr :level}
+{synoptline}
+{synopt: {opt level(#)}}specifies the confidence level, as a percentage, for confidence intervals.{p_end}
+{synoptline}
+{p2colreset}{...}
+
+{synoptset 30 tabbed}{...}
+{marker graphical}{...}
+{synopthdr :graph_options}
+{synoptline}
+{synopt :{cmd:lcolor(}{it:{help colorstyle}}{cmd:)}}color of the line showing the point estimates.{p_end}
+{synopt :{cmd:pcolor(}{it:{help colorstyle}}{cmd:)}}color of the pointwise confidence interval.{p_end}
+{synopt :{cmd:ucolor(}{it:{help colorstyle}}{cmd:)}}color of the uniform confidence bands.{p_end}
+
+{synopt :{cmd:legend(}{it:{help legend_options}}{cmd:)}}legend for the uniform bands, pointwise intervals and coefficients; "off" to suppress the legend.{p_end}
+
+{synopt :{cmd:title(}{it:title}{cmd:)}}title(s); the titles for different coefficients can be separated by ||; "off" to suppress titles.{p_end}
+{synopt :{cmd:xtitle(}{it:axis_title}{cmd:)}}specify x axis title(s); the titles for different coefficients can be separated by ||; "off" to suppress titles.{p_end}
+{synopt :{cmd:ytitle(}{it:axis_title}{cmd:)}}specify y axis title(s); the titles for different coefficients should be separated by ||; "off" to suppress titles.{p_end}
+
+{synopt :{cmdab:other:_graph_options:(}{it:options}{cmd:)}}options that will be passed directly to {help graph_twoway:twoway}.
+
+{synopt :{cmdab:combine:_options:(}{it:options}{cmd:)}}options that will be passed directly to {help graph combine:graph combine}.
+
+{synoptline}
+{p2colreset}{...}
+
+
+{marker description}{...}
+{title:Description}
+
+{pstd}
+{cmd:plotdeco} conveniently plots the
+estimated quantile decompositions with their confidence intervals and uniform
+bands. The display of the results in form of graphs is more informative than
+tabulation when a large number of quantiles has been estimated. A single call
+of this function will automatically combine the values saved by the last
+call of {it:{help cdeco}} or {it:{help cdeco_jmp}} and produce a graphic that
+visualizes the components of the decomposition and allows for testing directly hypotheses. Many
+options can be used to customize the figures.
+
+
+{marker examples}{...}
+{title:Examples}
+
+{pstd}Setup. {p_end}
+{phang2}. {stata webuse nlsw88}{p_end}
+{phang2}. {stata generate lwage=log(wage)}{p_end}
+
+{pstd}Quantile decomposition based on distribution regression{p_end}
+{phang2}. {stata cdeco lwage tenure ttl_exp grade, group(union) method(logit)}{p_end}
+
+{pstd}The defaut shows one panel for each component with pointwise and uniform confidence bands as well as one panel with all elements of the decomposition.{p_end}
+{phang2}. {stata plotdeco}{p_end}
+
+{pstd}We can obtain only the overall decomposition (last panel of the defaut figure) by setting {it:namelist} to {cmd:all}.{p_end}
+{phang2}. {stata plotdeco all}{p_end}
+
+{pstd}We can change the legend and the title with the options {cmd:legend} and {cmd:title}.{p_end}
+{phang2}. {stata plotdeco all, legend(`"order(1 "Observed difference" 2 "Explained" 3 "Unexplained")"') title("My decomposition")}{p_end}
+
+{pstd}We can plot a single component by setting {it:namelist} to the name of this component.{p_end}
+{phang2}. {stata plotdeco characteristics}{p_end}
+
+{pstd}We can plot only the pointwise confidence interval with the option {cmd:pointwise}.{p_end}
+{phang2}. {stata plotdeco characteristics, pointwise}{p_end}
+
+{pstd}We can suppress the legend with {cmd:legend(off)}.{p_end}
+{phang2}. {stata plotdeco characteristics, pointwise legend(off)}{p_end}
+
+{pstd}We can combine two components.{p_end}
+{phang2}. {stata plotdeco characteristics coefficients, pointwise legend(off)}{p_end}
+
+{pstd}We can arrange these two figures vertically.{p_end}
+{phang2}. {stata plotdeco characteristics coefficients, pointwise legend(off) combine_option(cols(1))}{p_end}
+
+{pstd}We can also plot other functions. The name must correspond to the name of the matrix that is returned by the function {cmd:cdeco}. For example, we can analyze the specification of the model for the control group.{p_end}
+{phang2}. {stata plotdeco misspecification_0}{p_end}
+
+
+{title:Methods and Formulas}
+
+{p 4 6} See Chernozhukov, Fernandez-Val and Melly (2013).
+
+
+{title:Reference}
+
+{phang}
+Victor Chernozhukov, Ivan Fernandez-Val and Alfred Galichon (2010): Quantile and Probability Curves without Crossing.
+Econometrica, 78(3), 1093-1125.
+
+{phang}
+Victor Chernozhukov, Ivan Fernandez-Val and Blaise Melly (2013): Inference on Counterfactual Distributions.
+Econometrica, 81(6), 2205-2268.
+
+
+{title:Remarks}
+
+{p 4 4}This is a preliminary version. Please feel free to share your comments, reports of bugs and
+propositions for extensions.
+
+{p 4 4}If you use this command in your work, please cite {helpb qrprocess##CFM_Stata: Chernozhukov, Fernández-Val and Melly (2020)}.
+
+
+{title:Authors}
+
+{p 4 6}Victor Chernozhukov, Iván Fernández-Val and Blaise Melly{p_end}
+{p 4 6}MIT, Boston University and University of Bern{p_end}
+{p 4 6}mellyblaise@gmail.com{p_end}
+
