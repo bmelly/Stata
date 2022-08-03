@@ -5,11 +5,11 @@ d The Stata commands mdqr and xtmdqr implement
 d the minimum distance estimators for grouped 
 d and panel data suggested in Melly and Pons (2022)
 d
-d Distribution-Date: 20220729
+d Distribution-Date: 20220803
 d
 d {bf:Blaise Melly, Bern University}
 d Support: email mellyblaise@gmail.com
 f mdqr.ado
 f xtmdqr.ado
-f mdqr.sthlp
-f xtmdqr.sthlp
+f mdqr.hlp
+f xtmdqr.hlp
