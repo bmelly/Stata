@@ -1,393 +1,410 @@
-*Version 1.0.1 27apr2020
+*Version 1.0.1 03aug2022
 *Codes implementing the estimators proposed in Chernozhukov, Fernandez-Val and Melly
 *Codes for QTE, pointwise and uniform confidence intervals based on bootstrap and Kolmogorov-Smirnov statistic
 
-cap prog drop cdeco
 program cdeco, eclass
 	version 9.2
 	capt findfile lmoremata.mlib
 	if _rc {
       	di as error "-moremata- is required; type {stata ssc install moremata} and restart Stata."
-		exit
+		error 499
 	}
-	syntax varlist [if] [in] [aweight/], Group(varname) [Method(string) Quantiles(numlist >0 <1 sort) NReg(real 100) Reps(integer 100) Level(cilevel) First(real 0.1) Last(real 0.9) noboot noprint noprintdeco noprinttest SCale(varlist) SAVing(string) CONS_test(string) beta(real 0.9995) small(real 0.00001) max_it(real 50) Censoring(varname) Firstc(real 0.1) Secondc(real 0.05) NSteps(integer 3) RIght]
-	local nreg=round(`nreg')
-	if `nreg'<1{
-		dis as error "The option nreg must be a strictly positive integer."
-		exit
+*check that qrprocess is installed
+	capt findfile qrprocess.ado
+	if _rc {
+      	di as error "-qrprocess- is required; type {net install qrprocess, from("https://raw.githubusercontent.com/bmelly/Stata/main/")}"
+		error 499
 	}
-	if "`method'"==""{
-		local method "qr"
-	}
-	if "`method'"!="qr" & "`method'"!="logit" & "`method'"!="probit" & "`method'"!="lpm" & "`method'"!="loc" & "`method'"!="locsca" & "`method'"!="cox" & "`method'"!="cqr"{
-		dis as error "The selected method has not been implemented"
-		exit
-	}
-	if "`method'"=="cqr"{
-		if `nsteps'<3{
-			dis in red "The options nsteps must be at least 3"
+	if replay() {
+		if "`e(cmd)'"!="cdeco" { 
+			error 301 
+		} 
+		if _by() {
+			error 190 
+		}
+        syntax [, Level(cilevel)]
+		ereturn display, level(`level')
+ 	}
+	else {
+		syntax varlist [if] [in] [pweight/], Group(varname) [Method(string) Quantiles(numlist >0 <1 sort) NReg(real 100) Reps(integer 100) Level(cilevel) First(real 0.1) Last(real 0.9) noboot noprint noprintdeco noprinttest SCale(varlist) SAVing(string) CONS_test(string) beta(real 0.9995) small(real 0.00001) max_it(real 50) Censoring(varname) Firstc(real 0.1) Secondc(real 0.05) NSteps(integer 3) RIght est_opts(string)]
+		local nreg=round(`nreg')
+		if `nreg'<1{
+			dis as error "The option nreg must be a strictly positive integer."
 			exit
 		}
-		if "`censoring'"==""{
-			dis as error "The option censoring must be provided to use the censored quantile regression estimator."
+		if "`method'"==""{
+			local method "qr"
+		}
+		if "`method'"!="qr" & "`method'"!="logit" & "`method'"!="probit" & "`method'"!="lpm" & "`method'"!="loc" & "`method'"!="locsca" & "`method'"!="cox" & "`method'"!="cqr"{
+			dis as error "The selected method has not been implemented"
 			exit
-		}
-	}
-	marksample touse
-	markout `touse' `group' `scale' `censoring' 
-	gettoken dep varlist : varlist
-	if "`exp'"==""{
-		tempvar exp
-		gen `exp'=1
-	}
-	quietly _rmcollright `varlist' [aw=`exp'] if `touse'
-	local varlist `r(varlist)'
-	if "`method'"=="cox"{
-		quietly sum `dep' if `touse'
-		if r(min)<0{
-			dis in red "Only positive dependent variables allowed when the cox method is used."
-			exit
-		}
-	}
-	quietly tab `group' if `touse'
-	if r(r)!=2{
-		di in red "The group variable, `group', is not binary"
-		exit
-	}
-	quietly sum `group'  if `touse'
-	if r(min)!=0 | r(max)!=1{
-		di in red "The group variable, `group', is not a 0/1 variable"
-		exit
-	}
-	cdeco_int `dep' `varlist' `if' `in' [aweight=`exp'], group(`group') method(`method') quantiles(`quantiles') nreg(`nreg') scale(`scale') beta(`beta') small(`small') max_it(`max_it') censoring(`censoring') firstc(`firstc') secondc(`secondc') nsteps(`nsteps') `right'
-	tempname results coef0 coef1 covariance tot_dif char coef miss0 miss1 test_tot test_char test_coef test_miss0 test_miss1 disto0 disto1 dist0 dist1 distc obs0 obs1 quants constest ref nreg0 nreg1
-	sca `nreg0'=r(nreg0)
-	sca `nreg1'=r(nreg1)
-	matrix `quants'=r(quants)
-	local obs=r(obs)
-	sca `obs0'=r(obs0)
-	sca `obs1'=r(obs1)
-	mata: st_matrix("`coef0'",qte_cov_coef0)
-	mata: st_matrix("`coef1'",qte_cov_coef1)
-	if "`boot'"==""{
-		if "`cons_test'"=="" | "`constest'"=="0" {
-			mat `constest'=0
-		}
-		else{
-			tokenize `cons_test'
-			local i=1
-			while "``i''"!=""{
-				if ``i''!=0{
-					mat `constest'=(nullmat(`constest'))\(``i'')
-				}
-				local i=`i'+1
-			}
-		}
-		if `"`saving'"'!="" {
-			_prefix_saving `saving'
-			local saving `"`s(filename)'"'
-			if "`double'" == "" {
-				local double `"`s(double)'"'
-			}
-			if "`double'" == "" {
-				local double "double"
-			}
-			local every	`"`s(every)'"'
-			if "`every'"==""{
-				local every=1
-			}
-			local replace `"`s(replace)'"'
-		}
-		else local every=999999
-		mata: qte_cov_defo0=qte_cov_obs0
-		mata: qte_cov_defo1=qte_cov_obs1
-		mata: qte_cov_def0=qte_cov_fitted0
-		mata: qte_cov_def1=qte_cov_fitted1
-		mata: qte_cov_defc=qte_cov_counter
-		mata: qte_cov_boot=J(0,rows(qte_cov_quant)*5,.)
-		preserve
-		local actual_more=c(more)
-		set more off
-		di in gr "(bootstrapping " _c
-		forvalues i=1/`reps'{
-			bsample
-			cdeco_int `dep' `varlist' `if' `in' [aweight=`exp'], group(`group') method(`method') quantiles(`quantiles') nreg(`nreg') scale(`scale') beta(`beta') small(`small') max_it(`max_it') censoring(`censoring') firstc(`firstc') secondc(`secondc') nsteps(`nsteps') `right'
-			mata: qte_cov_boot=qte_cov_boot\(qte_cov_obs0,qte_cov_obs1,qte_cov_fitted0,qte_cov_fitted1,qte_cov_counter)
-			if round(`i'/`every')==(`i'/`every'){
-				drop _all
-				mata: st_addobs(rows(qte_cov_boot))
-				mata: idx = st_addvar(st_local("double"), st_tempname(cols(qte_cov_boot)))
-				mata: st_store(.,idx,qte_cov_boot)
-				if `i'==1{	
-					quietly save `saving', `replace'
-				}
-				else{ 
-					quietly save `saving', replace
-				}
-			}
-			restore, preserve
-			di in gr "." _c
-		}
-		set more `actual_more'
-		di in gr ")"
-dis "`first'"
-dis "`last'"		
-		mata: ev_boot(qte_cov_boot, qte_cov_defo0, qte_cov_defo1, qte_cov_def0, qte_cov_def1, qte_cov_defc, qte_cov_quant, "`constest'", `last', `first', `level', "`results'", "`covariance'", "`tot_dif'", "`char'", "`coef'", "`miss0'", "`miss1'", "`test_tot'", "`test_char'", "`test_coef'", "`test_miss0'", "`test_miss1'", "`disto0'", "`disto1'", "`dist0'", "`dist1'", "`distc'")
-		mata: mata drop qte_cov_defo0 qte_cov_defo1 qte_cov_boot qte_cov_obs0 qte_cov_obs1 qte_cov_def0 qte_cov_def1 qte_cov_defc qte_cov_coef0 qte_cov_coef1 qte_cov_counter qte_cov_fitted0 qte_cov_fitted1 qte_cov_quant
-		mat colnames `test_tot'=KS CMS
-		mat colnames `test_char'=KS CMS
-		mat colnames `test_coef'=KS CMS
-		mat colnames `test_miss0'=KS CMS
-		mat colnames `test_miss1'=KS CMS
-		local conam "no_effect"
-		if `constest'[1,1]!=0{
-			local nct=rowsof(`constest')
-			forvalues i=1/`nct'{
-				local conam "`conam' constant_`i'"
-			}
-		}
-		local conam "`conam' constant_m stoch_dom_pos stoch_dom_neg"
-		mat rownames `test_tot'=`conam'
-		mat rownames `test_char'=`conam'
-		mat rownames `test_coef'=`conam'
-		mat `test_miss0'=`test_miss0'[1,1..2]
-		mat `test_miss1'=`test_miss1'[1,1..2]
-		local conam "no_difference"
-		mat rownames `test_miss0'=`conam'
-		mat rownames `test_miss1'=`conam'
-	}
-	else{
-		mata: st_matrix("`results'",(qte_cov_fitted0:-qte_cov_fitted1,qte_cov_fitted0:-qte_cov_counter,qte_cov_counter:-qte_cov_fitted1))
-		mata: st_matrix("`covariance'",J(3*rows(qte_cov_quant),3*rows(qte_cov_quant),0))
-		mata: st_matrix("`tot_dif'",(qte_cov_fitted0:-qte_cov_fitted1\J(3,rows(qte_cov_quant),.))')
-		mata: st_matrix("`char'",(qte_cov_fitted0:-qte_cov_counter\J(3,rows(qte_cov_quant),.))')
-		mata: st_matrix("`coef'",(qte_cov_counter:-qte_cov_fitted1\J(3,rows(qte_cov_quant),.))')
-		mata: st_matrix("`miss0'",(qte_cov_obs0:-qte_cov_fitted0\J(3,rows(qte_cov_quant),.))')
-		mata: st_matrix("`miss1'",(qte_cov_obs1:-qte_cov_fitted1\J(3,rows(qte_cov_quant),.))')
-		mata: st_matrix("`disto0'",(qte_cov_obs0\J(3,rows(qte_cov_quant),.))')
-		mata: st_matrix("`disto1'",(qte_cov_obs1\J(3,rows(qte_cov_quant),.))')
-		mata: st_matrix("`dist0'",(qte_cov_fitted0\J(3,rows(qte_cov_quant),.))')
-		mata: st_matrix("`dist1'",(qte_cov_fitted1\J(3,rows(qte_cov_quant),.))')
-		mata: st_matrix("`distc'",(qte_cov_counter\J(3,rows(qte_cov_quant),.))')
-		mata: mata drop qte_cov_coef0 qte_cov_coef1 qte_cov_counter qte_cov_fitted0 qte_cov_fitted1 qte_cov_obs0 qte_cov_obs1 qte_cov_quant
-*		mat `test_tot'=.
-*		mat `test_char'=.
-*		mat `test_coef'=.
-*		mat `test_miss0'=.
-*		mat `test_miss1'=.
-	}
-	local conam ""
-	local nq=rowsof(`quants')
-	forvalues i=1/`nq'{
-		local conam "`conam' t_q`i'"
-	}
-	forvalues i=1/`nq'{
-		local conam "`conam' x_q`i'"
-	}
-	forvalues i=1/`nq'{
-		local conam "`conam' b_q`i'"
-	}
-	mat colnames `results'=`conam'
-	mat rownames `results'=`dep'
-	mat colnames `covariance'=`conam'
-	mat rownames `covariance'=`conam'
-	local conam ""
-	forvalues i=1/`nq'{
-		local conam "`conam' q`i'"
-	}
-	mat rownames `tot_dif'=`conam'
-	mat colnames `tot_dif'=total_difference point_se uniform_lb uniform_ub
-	mat rownames `char'=`conam'
-	mat colnames `char'=characteristics point_se uniform_lb uniform_ub
-	mat rownames `coef'=`conam'
-	mat colnames `coef'=coefficients point_se uniform_lb uniform_ub
-	mat rownames `miss0'=`conam'
-	mat colnames `miss0'=misspecification_0 point_se uniform_lb uniform_ub
-	mat rownames `miss1'=`conam'
-	mat colnames `miss1'=misspecification_1 point_se uniform_lb uniform_ub
-	mat rownames `disto0'=`conam'
-	mat colnames `disto0'=observed_0 point_se uniform_lb uniform_ub
-	mat rownames `disto1'=`conam'
-	mat colnames `disto1'=observed_1 point_se uniform_lb uniform_ub
-	mat rownames `dist0'=`conam'
-	mat colnames `dist0'=fitted_0 point_se uniform_lb uniform_ub
-	mat rownames `dist1'=`conam'
-	mat colnames `dist1'=fitted_0 point_se uniform_lb uniform_ub
-	mat rownames `distc'=`conam'
-	mat colnames `distc'=counterfactual point_se uniform_lb uniform_ub
-	mat rownames `quants'=`conam'
-	mat colnames `quants'=quantile
-*Display the results
-*header
-	if "`print'"=="" & "`printdeco'"==""{
-		dis
-		dis as text _column(0) "Conditional model" _c
-		if "`method'"=="qr"{
-			di as result _column(43) "linear quantile regression"
 		}
 		if "`method'"=="cqr"{
-			di as result _column(43) %-8.0g "linear censored quantile regression"
+			if `nsteps'<3{
+				dis in red "The options nsteps must be at least 3"
+				exit
+			}
+			if "`censoring'"==""{
+				dis as error "The option censoring must be provided to use the censored quantile regression estimator."
+				exit
+			}
 		}
-		if "`method'"=="logit"{
-			di as result _column(43) "logit"
+		marksample touse
+		markout `touse' `group' `scale' `censoring' 
+		gettoken dep varlist : varlist
+		if "`exp'"==""{
+			tempvar exp
+			quie gen `exp' = 1 if `touse'
 		}
-		if "`method'"=="probit"{
-			di as result _column(43) "probit"
-		}
-		if "`method'"=="lpm"{
-			di as result _column(43) %-8.0g "linear probability model"
-		}
-		if "`method'"=="loc"{
-			di as result _column(43) "location model"
-		}
-		if "`method'"=="locsca"{
-			di as result _column(43) "location scale model"
-		}
+		quietly _rmcollright `varlist' [pw=`exp'] if `touse'
+		local varlist `r(varlist)'
 		if "`method'"=="cox"{
-			di as result _column(43) "cox duration model"
+			quietly sum `dep' if `touse'
+			if r(min)<0{
+				dis in red "Only positive dependent variables allowed when the cox method is used."
+				exit
+			}
 		}
-		if "`method'"!="cox"{
-			dis as text _column(0) "Number of regressions estimated" _c
-			di as result _column(43) %-8.0f `nreg0'
+		quietly tab `group' if `touse'
+		if r(r)!=2{
+			di in red "The group variable, `group', is not binary"
+			exit
 		}
-		di
+		quietly sum `group'  if `touse'
+		if r(min)!=0 | r(max)!=1{
+			di in red "The group variable, `group', is not a 0/1 variable"
+			exit
+		}
+		cdeco_int `dep' `varlist' if `touse' [pweight=`exp'], group(`group') method(`method') quantiles(`quantiles') nreg(`nreg') scale(`scale') beta(`beta') small(`small') max_it(`max_it') censoring(`censoring') firstc(`firstc') secondc(`secondc') nsteps(`nsteps') `right' est_opts(`est_opts')
+		tempname results coef0 coef1 covariance tot_dif char coef miss0 miss1 test_tot test_char test_coef test_miss0 test_miss1 disto0 disto1 dist0 dist1 distc obs0 obs1 quants constest ref nreg0 nreg1
+		sca `nreg0' = r(nreg0)
+		sca `nreg1' = r(nreg1)
+		matrix `quants' = r(quants)
+		local obs = r(obs)
+		sca `obs0' = r(obs0)
+		sca `obs1' = r(obs1)
+		mata: st_matrix("`coef0'", qte_cov_coef0)
+		mata: st_matrix("`coef1'", qte_cov_coef1)
 		if "`boot'"==""{
-			di as text "The variance has been estimated by bootstraping the results " as result `reps'  as text " times."
+			if "`cons_test'"=="" | "`constest'"=="0" {
+				mat `constest'=0
+			}
+			else{
+				tokenize `cons_test'
+				local i=1
+				while "``i''"!=""{
+					if ``i''!=0{
+						mat `constest'=(nullmat(`constest'))\(``i'')
+					}
+					local i=`i'+1
+				}
+			}
+			if `"`saving'"'!="" {
+				_prefix_saving `saving'
+				local saving `"`s(filename)'"'
+				if "`double'" == "" {
+					local double `"`s(double)'"'
+				}
+				if "`double'" == "" {
+					local double "double"
+				}
+				local every	`"`s(every)'"'
+				if "`every'"==""{
+					local every=1
+				}
+				local replace `"`s(replace)'"'
+			}
+			else local every=999999
+			mata: qte_cov_defo0=qte_cov_obs0
+			mata: qte_cov_defo1=qte_cov_obs1
+			mata: qte_cov_def0=qte_cov_fitted0
+			mata: qte_cov_def1=qte_cov_fitted1
+			mata: qte_cov_defc=qte_cov_counter
+			mata: qte_cov_boot=J(0,rows(qte_cov_quant)*5,.)
+			preserve
+			local actual_more=c(more)
+			set more off
+			di in gr "(bootstrapping " _c
+			forvalues i=1/`reps'{
+				bsample
+				cdeco_int `dep' `varlist' `if' `in' [pweight=`exp'], group(`group') method(`method') quantiles(`quantiles') nreg(`nreg') scale(`scale') beta(`beta') small(`small') max_it(`max_it') censoring(`censoring') firstc(`firstc') secondc(`secondc') nsteps(`nsteps') `right' est_opts(`est_opts')
+				mata: qte_cov_boot=qte_cov_boot\(qte_cov_obs0,qte_cov_obs1,qte_cov_fitted0,qte_cov_fitted1,qte_cov_counter)
+				if round(`i'/`every')==(`i'/`every'){
+					drop _all
+					mata: st_addobs(rows(qte_cov_boot))
+					mata: idx = st_addvar(st_local("double"), st_tempname(cols(qte_cov_boot)))
+					mata: st_store(.,idx,qte_cov_boot)
+					if `i'==1{	
+						quietly save `saving', `replace'
+					}
+					else{ 
+						quietly save `saving', replace
+					}
+				}
+				restore, preserve
+				di in gr "." _c
+			}
+			set more `actual_more'
+			di in gr ")"		
+			mata: ev_boot(qte_cov_boot, qte_cov_defo0, qte_cov_defo1, qte_cov_def0, qte_cov_def1, qte_cov_defc, qte_cov_quant, "`constest'", `last', `first', `level', "`results'", "`covariance'", "`tot_dif'", "`char'", "`coef'", "`miss0'", "`miss1'", "`test_tot'", "`test_char'", "`test_coef'", "`test_miss0'", "`test_miss1'", "`disto0'", "`disto1'", "`dist0'", "`dist1'", "`distc'")
+			mata: mata drop qte_cov_defo0 qte_cov_defo1 qte_cov_boot qte_cov_obs0 qte_cov_obs1 qte_cov_def0 qte_cov_def1 qte_cov_defc qte_cov_coef0 qte_cov_coef1 qte_cov_counter qte_cov_fitted0 qte_cov_fitted1 qte_cov_quant
+			mat colnames `test_tot'=KS CMS
+			mat colnames `test_char'=KS CMS
+			mat colnames `test_coef'=KS CMS
+			mat colnames `test_miss0'=KS CMS
+			mat colnames `test_miss1'=KS CMS
+			local conam "no_effect"
+			if `constest'[1,1]!=0{
+				local nct=rowsof(`constest')
+				forvalues i=1/`nct'{
+					local conam "`conam' constant_`i'"
+				}
+			}
+			local conam "`conam' constant_m stoch_dom_pos stoch_dom_neg"
+			mat rownames `test_tot'=`conam'
+			mat rownames `test_char'=`conam'
+			mat rownames `test_coef'=`conam'
+			mat `test_miss0'=`test_miss0'[1,1..2]
+			mat `test_miss1'=`test_miss1'[1,1..2]
+			local conam "no_difference"
+			mat rownames `test_miss0'=`conam'
+			mat rownames `test_miss1'=`conam'
 		}
 		else{
-			di as text "The variance has not been computed." _new "Do not turn the option boot off if you want to compute it."
+			mata: st_matrix("`results'", (qte_cov_fitted0 :- qte_cov_fitted1, qte_cov_fitted0 :- qte_cov_counter, qte_cov_counter :- qte_cov_fitted1))
+			mata: st_matrix("`covariance'", J(3*rows(qte_cov_quant),3*rows(qte_cov_quant),0))
+			mata: st_matrix("`tot_dif'", (qte_cov_fitted0:-qte_cov_fitted1\J(3,rows(qte_cov_quant),.))')
+			mata: st_matrix("`char'", (qte_cov_fitted0:-qte_cov_counter\J(3,rows(qte_cov_quant),.))')
+			mata: st_matrix("`coef'", (qte_cov_counter:-qte_cov_fitted1\J(3,rows(qte_cov_quant),.))')
+			mata: st_matrix("`miss0'", (qte_cov_obs0:-qte_cov_fitted0\J(3,rows(qte_cov_quant),.))')
+			mata: st_matrix("`miss1'", (qte_cov_obs1:-qte_cov_fitted1\J(3,rows(qte_cov_quant),.))')
+			mata: st_matrix("`disto0'", (qte_cov_obs0\J(3,rows(qte_cov_quant),.))')
+			mata: st_matrix("`disto1'", (qte_cov_obs1\J(3,rows(qte_cov_quant),.))')
+			mata: st_matrix("`dist0'", (qte_cov_fitted0\J(3,rows(qte_cov_quant),.))')
+			mata: st_matrix("`dist1'", (qte_cov_fitted1\J(3,rows(qte_cov_quant),.))')
+			mata: st_matrix("`distc'", (qte_cov_counter\J(3,rows(qte_cov_quant),.))')
+			mata: mata drop qte_cov_coef0 qte_cov_coef1 qte_cov_counter qte_cov_fitted0 qte_cov_fitted1 qte_cov_obs0 qte_cov_obs1 qte_cov_quant
 		}
-		dis
-		dis as text _column(0) "No. of obs. in the reference group" _c
-		dis as result _column(43) %-8.0f `obs0'
-		dis as text _column(0) "No. of obs. in the counterfactual group" _c
-		dis as result _column(43) %-8.0f `obs1'
-		dis
-		display as text _n "Differences between the observable distributions (based on the conditional model)" 
-		dis as text "{hline 12}" "{c TT}" "{hline 68}"
-		dis as text _column(13) "{c |}"  _column(15) %~10s "Quantile" _column(28) %~10s "Pointwise" _column(46) %~8s "Pointwise" _column(62) %~21s "Functional"
-		dis as text _column(0) "Quantile" _column(13) "{c |}" _column(15) %~10s "effect" _column(28) %~10s "Std. Err." _column(41) %~8s "[`level'% Conf. Interval]" _column(62) %~21s "[`level'% Conf. Interval]"
-		dis as text "{hline 12}" "{c +}" "{hline 68}"
-		local k=1
+		local conam ""
 		local nq=rowsof(`quants')
-*Results for each quantile 
-		while `k'<=`nq'{
-			dis as text _column(0) %17s `quants'[`k',1] as text _column(13) "{c |}" _column(16) as result %8.0g (`tot_dif'[`k',1]) _column (28) as result %8.0g (`tot_dif'[`k',2]) _column (40) as result %8.0g (`tot_dif'[`k',1]-invnormal(0.5*(1+`level'/100))*`tot_dif'[`k',2]) _column(51) as result %8.0g (`tot_dif'[`k',1]+invnormal(0.5*(1+`level'/100))*`tot_dif'[`k',2]) _column(63) as result %8.0g (`tot_dif'[`k',3]) _column(73) as result %8.0g (`tot_dif'[`k',4]) 
-			if `k'==`nq' {
-				dis as text "{hline 12}" "{c BT}" "{hline 68}" 
-			}
-			local k=`k'+1
+		forvalues i=1/`nq'{
+			local conam "`conam' t_q`i'"
 		}
-		dis
-		display as text _n "Effects of characteristics" 
-		dis as text "{hline 12}" "{c TT}" "{hline 68}"
-		dis as text _column(13) "{c |}"  _column(15) %~10s "Quantile" _column(28) %~10s "Pointwise" _column(46) %~8s "Pointwise" _column(62) %~21s "Functional"
-		dis as text _column(0) "Quantile" _column(13) "{c |}" _column(15) %~10s "effect" _column(28) %~10s "Std. Err." _column(41) %~8s "[`level'% Conf. Interval]" _column(62) %~21s "[`level'% Conf. Interval]"
-		dis as text "{hline 12}" "{c +}" "{hline 68}"
-		local k=1
-		local nq=rowsof(`quants')
-*Results for each quantile 
-		while `k'<=`nq'{
-			dis as text _column(0) %17s `quants'[`k',1] as text _column(13) "{c |}" _column(16) as result %8.0g (`char'[`k',1]) _column (28) as result %8.0g (`char'[`k',2]) _column (40) as result %8.0g (`char'[`k',1]-invnormal(0.5*(1+`level'/100))*`char'[`k',2]) _column(51) as result %8.0g (`char'[`k',1]+invnormal(0.5*(1+`level'/100))*`char'[`k',2]) _column(63) as result %8.0g (`char'[`k',3]) _column(73) as result %8.0g (`char'[`k',4]) 
-			if `k'==`nq' {
-				dis as text "{hline 12}" "{c BT}" "{hline 68}" 
-			}
-			local k=`k'+1
+		forvalues i=1/`nq'{
+			local conam "`conam' x_q`i'"
 		}
-		dis
-		display as text _n "Effects of coefficients" 
-		dis as text "{hline 12}" "{c TT}" "{hline 68}"
-		dis as text _column(13) "{c |}"  _column(15) %~10s "Quantile" _column(28) %~10s "Pointwise" _column(46) %~8s "Pointwise" _column(62) %~21s "Functional"
-		dis as text _column(0) "Quantile" _column(13) "{c |}" _column(15) %~10s "effect" _column(28) %~10s "Std. Err." _column(41) %~8s "[`level'% Conf. Interval]" _column(62) %~21s "[`level'% Conf. Interval]"
-		dis as text "{hline 12}" "{c +}" "{hline 68}"
-		local k=1
-		local nq=rowsof(`quants')
-*Results for each quantile 
-		while `k'<=`nq'{
-			dis as text _column(0) %17s `quants'[`k',1] as text _column(13) "{c |}" _column(16) as result %8.0g (`coef'[`k',1]) _column (28) as result %8.0g (`coef'[`k',2]) _column (40) as result %8.0g (`coef'[`k',1]-invnormal(0.5*(1+`level'/100))*`coef'[`k',2]) _column(51) as result %8.0g (`coef'[`k',1]+invnormal(0.5*(1+`level'/100))*`coef'[`k',2]) _column(63) as result %8.0g (`coef'[`k',3]) _column(73) as result %8.0g (`coef'[`k',4]) 
-			if `k'==`nq' {
-				dis as text "{hline 12}" "{c BT}" "{hline 68}" 
-			}
-			local k=`k'+1
+		forvalues i=1/`nq'{
+			local conam "`conam' b_q`i'"
 		}
-	}
-*Tests
-	if "`boot'"=="" & "`print'"=="" & "`printtest'"==""{
-		dis
-		dis as text _n "Bootstrap inference on the counterfactual quantile processes"
-		dis as text "{hline 51}" "{c TT}" "{hline 29}"
-		dis as text _column(52) "{c |}"  _column(62) %~10s "P-values"
-		dis as text _column(0) "Null-hypothesis" _column(52) "{c |}" _column(54) %~10s "KS-statistic" _column(69) %~10s "CMS-statistic"
-		dis as text "{hline 51}" "{c +}" "{hline 29}"
-		dis as text _column(0) %17s "Correct specification of the parametric model 0" as text _column(52) "{c |}" _column(54) as result %8.0g (`test_miss0'[1,1]) _column(69) as result %8.0g (`test_miss0'[1,2]) 
-		dis as text _column(0) %17s "Correct specification of the parametric model 1" as text _column(52) "{c |}" _column(54) as result %8.0g (`test_miss1'[1,1]) _column(69) as result %8.0g (`test_miss1'[1,2]) 
-		dis as text _column(0) %17s "Differences between the observable distributions" _column(52) "{c |}" 
-		dis as text _column(5) %17s "No effect: QE(tau)=0 for all taus" as text _column(52) "{c |}" _column(54) as result %8.0g (`test_tot'[1,1]) _column(69) as result %8.0g (`test_tot'[1,2]) 
-		if `constest'[1,1]!=0{
-			local nct=rowsof(`constest')
-			forvalues i=1/`nct'{
-				local temp=`constest'[`i',1]
-				dis as text _column(5) %17s "Constant effect: QE(tau)=`temp' for all taus" as text _column(52) "{c |}" _column(54) as result %8.0g (`test_tot'[1+`i',1]) _column(69) as result %8.0g (`test_tot'[1+`i',2]) 
+		mat colnames `results'=`conam'
+		mat rownames `results'=`dep'
+		mat colnames `covariance'=`conam'
+		mat rownames `covariance'=`conam'
+		local conam ""
+		forvalues i=1/`nq'{
+			local conam "`conam' q`i'"
+		}
+		mat rownames `tot_dif'=`conam'
+		mat colnames `tot_dif'=total_difference point_se uniform_lb uniform_ub
+		mat rownames `char'=`conam'
+		mat colnames `char'=characteristics point_se uniform_lb uniform_ub
+		mat rownames `coef'=`conam'
+		mat colnames `coef'=coefficients point_se uniform_lb uniform_ub
+		mat rownames `miss0'=`conam'
+		mat colnames `miss0'=misspecification_0 point_se uniform_lb uniform_ub
+		mat rownames `miss1'=`conam'
+		mat colnames `miss1'=misspecification_1 point_se uniform_lb uniform_ub
+		mat rownames `disto0'=`conam'
+		mat colnames `disto0'=observed_0 point_se uniform_lb uniform_ub
+		mat rownames `disto1'=`conam'
+		mat colnames `disto1'=observed_1 point_se uniform_lb uniform_ub
+		mat rownames `dist0'=`conam'
+		mat colnames `dist0'=fitted_0 point_se uniform_lb uniform_ub
+		mat rownames `dist1'=`conam'
+		mat colnames `dist1'=fitted_0 point_se uniform_lb uniform_ub
+		mat rownames `distc'=`conam'
+		mat colnames `distc'=counterfactual point_se uniform_lb uniform_ub
+		mat rownames `quants'=`conam'
+		mat colnames `quants'=quantile
+	*Display the results
+	*header
+		if "`print'"=="" & "`printdeco'"==""{
+			dis
+			dis as text _column(0) "Conditional model" _c
+			if "`method'"=="qr"{
+				di as result _column(43) "linear quantile regression"
+			}
+			if "`method'"=="cqr"{
+				di as result _column(43) %-8.0g "linear censored quantile regression"
+			}
+			if "`method'"=="logit"{
+				di as result _column(43) "logit"
+			}
+			if "`method'"=="probit"{
+				di as result _column(43) "probit"
+			}
+			if "`method'"=="lpm"{
+				di as result _column(43) %-8.0g "linear probability model"
+			}
+			if "`method'"=="loc"{
+				di as result _column(43) "location model"
+			}
+			if "`method'"=="locsca"{
+				di as result _column(43) "location scale model"
+			}
+			if "`method'"=="cox"{
+				di as result _column(43) "cox duration model"
+			}
+			if "`method'"!="cox"{
+				dis as text _column(0) "Number of regressions estimated" _c
+				di as result _column(43) %-8.0f `nreg0'
+			}
+			di
+			if "`boot'"==""{
+				di as text "The variance has been estimated by bootstraping the results " as result `reps'  as text " times."
+			}
+			else{
+				di as text "The variance has not been computed." _new "Do not turn the option boot off if you want to compute it."
+			}
+			dis
+			dis as text _column(0) "No. of obs. in the reference group" _c
+			dis as result _column(43) %-8.0f `obs0'
+			dis as text _column(0) "No. of obs. in the counterfactual group" _c
+			dis as result _column(43) %-8.0f `obs1'
+			dis
+			display as text _n "Differences between the observable distributions (based on the conditional model)" 
+			dis as text "{hline 12}" "{c TT}" "{hline 68}"
+			dis as text _column(13) "{c |}"  _column(15) %~10s "Quantile" _column(28) %~10s "Pointwise" _column(46) %~8s "Pointwise" _column(62) %~21s "Functional"
+			dis as text _column(0) "Quantile" _column(13) "{c |}" _column(15) %~10s "effect" _column(28) %~10s "Std. Err." _column(41) %~8s "[`level'% Conf. Interval]" _column(62) %~21s "[`level'% Conf. Interval]"
+			dis as text "{hline 12}" "{c +}" "{hline 68}"
+			local k=1
+			local nq=rowsof(`quants')
+	*Results for each quantile 
+			while `k'<=`nq'{
+				dis as text _column(0) %17s `quants'[`k',1] as text _column(13) "{c |}" _column(16) as result %8.0g (`tot_dif'[`k',1]) _column (28) as result %8.0g (`tot_dif'[`k',2]) _column (40) as result %8.0g (`tot_dif'[`k',1]-invnormal(0.5*(1+`level'/100))*`tot_dif'[`k',2]) _column(51) as result %8.0g (`tot_dif'[`k',1]+invnormal(0.5*(1+`level'/100))*`tot_dif'[`k',2]) _column(63) as result %8.0g (`tot_dif'[`k',3]) _column(73) as result %8.0g (`tot_dif'[`k',4]) 
+				if `k'==`nq' {
+					dis as text "{hline 12}" "{c BT}" "{hline 68}" 
+				}
+				local k=`k'+1
+			}
+			dis
+			display as text _n "Effects of characteristics" 
+			dis as text "{hline 12}" "{c TT}" "{hline 68}"
+			dis as text _column(13) "{c |}"  _column(15) %~10s "Quantile" _column(28) %~10s "Pointwise" _column(46) %~8s "Pointwise" _column(62) %~21s "Functional"
+			dis as text _column(0) "Quantile" _column(13) "{c |}" _column(15) %~10s "effect" _column(28) %~10s "Std. Err." _column(41) %~8s "[`level'% Conf. Interval]" _column(62) %~21s "[`level'% Conf. Interval]"
+			dis as text "{hline 12}" "{c +}" "{hline 68}"
+			local k=1
+			local nq=rowsof(`quants')
+	*Results for each quantile 
+			while `k'<=`nq'{
+				dis as text _column(0) %17s `quants'[`k',1] as text _column(13) "{c |}" _column(16) as result %8.0g (`char'[`k',1]) _column (28) as result %8.0g (`char'[`k',2]) _column (40) as result %8.0g (`char'[`k',1]-invnormal(0.5*(1+`level'/100))*`char'[`k',2]) _column(51) as result %8.0g (`char'[`k',1]+invnormal(0.5*(1+`level'/100))*`char'[`k',2]) _column(63) as result %8.0g (`char'[`k',3]) _column(73) as result %8.0g (`char'[`k',4]) 
+				if `k'==`nq' {
+					dis as text "{hline 12}" "{c BT}" "{hline 68}" 
+				}
+				local k=`k'+1
+			}
+			dis
+			display as text _n "Effects of coefficients" 
+			dis as text "{hline 12}" "{c TT}" "{hline 68}"
+			dis as text _column(13) "{c |}"  _column(15) %~10s "Quantile" _column(28) %~10s "Pointwise" _column(46) %~8s "Pointwise" _column(62) %~21s "Functional"
+			dis as text _column(0) "Quantile" _column(13) "{c |}" _column(15) %~10s "effect" _column(28) %~10s "Std. Err." _column(41) %~8s "[`level'% Conf. Interval]" _column(62) %~21s "[`level'% Conf. Interval]"
+			dis as text "{hline 12}" "{c +}" "{hline 68}"
+			local k=1
+			local nq=rowsof(`quants')
+	*Results for each quantile 
+			while `k'<=`nq'{
+				dis as text _column(0) %17s `quants'[`k',1] as text _column(13) "{c |}" _column(16) as result %8.0g (`coef'[`k',1]) _column (28) as result %8.0g (`coef'[`k',2]) _column (40) as result %8.0g (`coef'[`k',1]-invnormal(0.5*(1+`level'/100))*`coef'[`k',2]) _column(51) as result %8.0g (`coef'[`k',1]+invnormal(0.5*(1+`level'/100))*`coef'[`k',2]) _column(63) as result %8.0g (`coef'[`k',3]) _column(73) as result %8.0g (`coef'[`k',4]) 
+				if `k'==`nq' {
+					dis as text "{hline 12}" "{c BT}" "{hline 68}" 
+				}
+				local k=`k'+1
 			}
 		}
-		dis as text _column(5) %17s "Constant effect: QE(tau)=QE(0.5) for all taus" as text _column(52) "{c |}" _column(54) as result %8.0g (`test_tot'[rowsof(`test_tot')-2,1]) _column(69) as result %8.0g (`test_tot'[rowsof(`test_tot')-2,2]) 
-		dis as text _column(5) %17s "Stochastic dominance: QE(tau)>0 for all taus" as text _column(52) "{c |}" _column(54) as result %8.0g (`test_tot'[rowsof(`test_tot')-1,1]) _column(69) as result %8.0g (`test_tot'[rowsof(`test_tot')-1,2]) 
-		dis as text _column(5) %17s "Stochastic dominance: QE(tau)<0 for all taus" as text _column(52) "{c |}" _column(54) as result %8.0g (`test_tot'[rowsof(`test_tot'),1]) _column(69) as result %8.0g (`test_tot'[rowsof(`test_tot'),2]) 
-		dis as text _column(0) %17s "Effects of characteristics" _column(52) "{c |}" 
-		dis as text _column(5) %17s "No effect: QTE(tau)=0 for all taus" as text _column(52) "{c |}" _column(54) as result %8.0g (`test_char'[1,1]) _column(69) as result %8.0g (`test_char'[1,2]) 
-		if `constest'[1,1]!=0{
-			local nct=rowsof(`constest')
-			forvalues i=1/`nct'{
-				local temp=`constest'[`i',1]
-				dis as text _column(5) %17s "Constant effect: QE(tau)=`temp' for all taus" as text _column(52) "{c |}" _column(54) as result %8.0g (`test_char'[1+`i',1]) _column(69) as result %8.0g (`test_char'[1+`i',2]) 
+	*Tests
+		if "`boot'"=="" & "`print'"=="" & "`printtest'"==""{
+			dis
+			dis as text _n "Bootstrap inference on the counterfactual quantile processes"
+			dis as text "{hline 51}" "{c TT}" "{hline 29}"
+			dis as text _column(52) "{c |}"  _column(62) %~10s "P-values"
+			dis as text _column(0) "Null-hypothesis" _column(52) "{c |}" _column(54) %~10s "KS-statistic" _column(69) %~10s "CMS-statistic"
+			dis as text "{hline 51}" "{c +}" "{hline 29}"
+			dis as text _column(0) %17s "Correct specification of the parametric model 0" as text _column(52) "{c |}" _column(54) as result %8.0g (`test_miss0'[1,1]) _column(69) as result %8.0g (`test_miss0'[1,2]) 
+			dis as text _column(0) %17s "Correct specification of the parametric model 1" as text _column(52) "{c |}" _column(54) as result %8.0g (`test_miss1'[1,1]) _column(69) as result %8.0g (`test_miss1'[1,2]) 
+			dis as text _column(0) %17s "Differences between the observable distributions" _column(52) "{c |}" 
+			dis as text _column(5) %17s "No effect: QE(tau)=0 for all taus" as text _column(52) "{c |}" _column(54) as result %8.0g (`test_tot'[1,1]) _column(69) as result %8.0g (`test_tot'[1,2]) 
+			if `constest'[1,1]!=0{
+				local nct=rowsof(`constest')
+				forvalues i=1/`nct'{
+					local temp=`constest'[`i',1]
+					dis as text _column(5) %17s "Constant effect: QE(tau)=`temp' for all taus" as text _column(52) "{c |}" _column(54) as result %8.0g (`test_tot'[1+`i',1]) _column(69) as result %8.0g (`test_tot'[1+`i',2]) 
+				}
 			}
-		}
-		dis as text _column(5) %17s "Constant effect: QE(tau)=QE(0.5) for all taus" as text _column(52) "{c |}" _column(54) as result %8.0g (`test_char'[rowsof(`test_tot')-2,1]) _column(69) as result %8.0g (`test_char'[rowsof(`test_tot')-2,2]) 
-		dis as text _column(5) %17s "Stochastic dominance: QE(tau)>0 for all taus" as text _column(52) "{c |}" _column(54) as result %8.0g (`test_char'[rowsof(`test_tot')-1,1]) _column(69) as result %8.0g (`test_char'[rowsof(`test_tot')-1,2]) 
-		dis as text _column(5) %17s "Stochastic dominance: QE(tau)<0 for all taus" as text _column(52) "{c |}" _column(54) as result %8.0g (`test_char'[rowsof(`test_tot'),1]) _column(69) as result %8.0g (`test_char'[rowsof(`test_tot'),2]) 
-		dis as text _column(0) %17s "Effects of coefficients" _column(52) "{c |}" 
-		dis as text _column(5) %17s "No effect: QE(tau)=0 for all taus" as text _column(52) "{c |}" _column(54) as result %8.0g (`test_coef'[1,1]) _column(69) as result %8.0g (`test_coef'[1,2]) 
-		if `constest'[1,1]!=0{
-			local nct=rowsof(`constest')
-			forvalues i=1/`nct'{
-				local temp=`constest'[`i',1]
-				dis as text _column(5) %17s "Constant effect: QTE(tau)=`temp' for all taus" as text _column(52) "{c |}" _column(54) as result %8.0g (`test_coef'[1+`i',1]) _column(69) as result %8.0g (`test_coef'[1+`i',2]) 
+			dis as text _column(5) %17s "Constant effect: QE(tau)=QE(0.5) for all taus" as text _column(52) "{c |}" _column(54) as result %8.0g (`test_tot'[rowsof(`test_tot')-2,1]) _column(69) as result %8.0g (`test_tot'[rowsof(`test_tot')-2,2]) 
+			dis as text _column(5) %17s "Stochastic dominance: QE(tau)>0 for all taus" as text _column(52) "{c |}" _column(54) as result %8.0g (`test_tot'[rowsof(`test_tot')-1,1]) _column(69) as result %8.0g (`test_tot'[rowsof(`test_tot')-1,2]) 
+			dis as text _column(5) %17s "Stochastic dominance: QE(tau)<0 for all taus" as text _column(52) "{c |}" _column(54) as result %8.0g (`test_tot'[rowsof(`test_tot'),1]) _column(69) as result %8.0g (`test_tot'[rowsof(`test_tot'),2]) 
+			dis as text _column(0) %17s "Effects of characteristics" _column(52) "{c |}" 
+			dis as text _column(5) %17s "No effect: QTE(tau)=0 for all taus" as text _column(52) "{c |}" _column(54) as result %8.0g (`test_char'[1,1]) _column(69) as result %8.0g (`test_char'[1,2]) 
+			if `constest'[1,1]!=0{
+				local nct=rowsof(`constest')
+				forvalues i=1/`nct'{
+					local temp=`constest'[`i',1]
+					dis as text _column(5) %17s "Constant effect: QE(tau)=`temp' for all taus" as text _column(52) "{c |}" _column(54) as result %8.0g (`test_char'[1+`i',1]) _column(69) as result %8.0g (`test_char'[1+`i',2]) 
+				}
 			}
+			dis as text _column(5) %17s "Constant effect: QE(tau)=QE(0.5) for all taus" as text _column(52) "{c |}" _column(54) as result %8.0g (`test_char'[rowsof(`test_tot')-2,1]) _column(69) as result %8.0g (`test_char'[rowsof(`test_tot')-2,2]) 
+			dis as text _column(5) %17s "Stochastic dominance: QE(tau)>0 for all taus" as text _column(52) "{c |}" _column(54) as result %8.0g (`test_char'[rowsof(`test_tot')-1,1]) _column(69) as result %8.0g (`test_char'[rowsof(`test_tot')-1,2]) 
+			dis as text _column(5) %17s "Stochastic dominance: QE(tau)<0 for all taus" as text _column(52) "{c |}" _column(54) as result %8.0g (`test_char'[rowsof(`test_tot'),1]) _column(69) as result %8.0g (`test_char'[rowsof(`test_tot'),2]) 
+			dis as text _column(0) %17s "Effects of coefficients" _column(52) "{c |}" 
+			dis as text _column(5) %17s "No effect: QE(tau)=0 for all taus" as text _column(52) "{c |}" _column(54) as result %8.0g (`test_coef'[1,1]) _column(69) as result %8.0g (`test_coef'[1,2]) 
+			if `constest'[1,1]!=0{
+				local nct=rowsof(`constest')
+				forvalues i=1/`nct'{
+					local temp=`constest'[`i',1]
+					dis as text _column(5) %17s "Constant effect: QTE(tau)=`temp' for all taus" as text _column(52) "{c |}" _column(54) as result %8.0g (`test_coef'[1+`i',1]) _column(69) as result %8.0g (`test_coef'[1+`i',2]) 
+				}
+			}
+			dis as text _column(5) %17s "Constant effect: QE(tau)=QE(0.5) for all taus" as text _column(52) "{c |}" _column(54) as result %8.0g (`test_coef'[rowsof(`test_tot')-2,1]) _column(69) as result %8.0g (`test_coef'[rowsof(`test_tot')-2,2]) 
+			dis as text _column(5) %17s "Stochastic dominance: QE(tau)>0 for all taus" as text _column(52) "{c |}" _column(54) as result %8.0g (`test_coef'[rowsof(`test_tot')-1,1]) _column(69) as result %8.0g (`test_coef'[rowsof(`test_tot')-1,2]) 
+			dis as text _column(5) %17s "Stochastic dominance: QE(tau)<0 for all taus" as text _column(52) "{c |}" _column(54) as result %8.0g (`test_coef'[rowsof(`test_tot'),1]) _column(69) as result %8.0g (`test_coef'[rowsof(`test_tot'),2]) 
+			dis as text "{hline 51}" "{c BT}" "{hline 29}"
 		}
-		dis as text _column(5) %17s "Constant effect: QE(tau)=QE(0.5) for all taus" as text _column(52) "{c |}" _column(54) as result %8.0g (`test_coef'[rowsof(`test_tot')-2,1]) _column(69) as result %8.0g (`test_coef'[rowsof(`test_tot')-2,2]) 
-		dis as text _column(5) %17s "Stochastic dominance: QE(tau)>0 for all taus" as text _column(52) "{c |}" _column(54) as result %8.0g (`test_coef'[rowsof(`test_tot')-1,1]) _column(69) as result %8.0g (`test_coef'[rowsof(`test_tot')-1,2]) 
-		dis as text _column(5) %17s "Stochastic dominance: QE(tau)<0 for all taus" as text _column(52) "{c |}" _column(54) as result %8.0g (`test_coef'[rowsof(`test_tot'),1]) _column(69) as result %8.0g (`test_coef'[rowsof(`test_tot'),2]) 
-		dis as text "{hline 51}" "{c BT}" "{hline 29}"
-	}
-	ereturn post `results' `covariance', dep(`dep') obs(`obs') esample(`touse')
-	ereturn matrix total_difference=`tot_dif'
-	ereturn matrix characteristics=`char'
-	ereturn matrix coefficients=`coef'
-	ereturn matrix misspecification_0 =`miss0'
-	ereturn matrix misspecification_1 =`miss1'
-	ereturn matrix observed_0=`disto0'
-	ereturn matrix observed_1 =`disto1'
-	ereturn matrix fitted_0 =`dist0'
-	ereturn matrix fitted_1 =`dist1'
-	ereturn matrix counterfactual =`distc'
-	ereturn local cmd "counterfactual"
-	ereturn scalar obs0=`obs0'
-	ereturn scalar obs1=`obs1'
-	ereturn scalar nreg0=`nreg0'
-	ereturn scalar nreg1=`nreg1'
-	ereturn matrix quantiles=`quants'
-	ereturn matrix coef0=`coef0'
-	ereturn matrix coef1=`coef1'
-	if "`boot'"==""{
-		ereturn matrix test_tot=`test_tot'
-		ereturn matrix test_char=`test_char'
-		ereturn matrix test_coef=`test_coef'
-		ereturn matrix test_miss0=`test_miss0'
-		ereturn matrix test_miss1=`test_miss1'
+		if "`boot'" == "" {
+			ereturn post `results' `covariance', dep(`dep') obs(`obs') esample(`touse')
+			ereturn local vce "bootstrap"
+		}
+		else {
+			ereturn post `results', dep(`dep') obs(`obs') esample(`touse')
+			ereturn local vce "novar"
+		}
+		ereturn matrix total_difference=`tot_dif'
+		ereturn matrix characteristics=`char'
+		ereturn matrix coefficients=`coef'
+		ereturn matrix misspecification_0 =`miss0'
+		ereturn matrix misspecification_1 =`miss1'
+		ereturn matrix observed_0=`disto0'
+		ereturn matrix observed_1 =`disto1'
+		ereturn matrix fitted_0 =`dist0'
+		ereturn matrix fitted_1 =`dist1'
+		ereturn matrix counterfactual =`distc'
+		ereturn local cmd "cdeco"
+		ereturn local plotdeco "total_difference characteristics coefficients"
+		ereturn scalar obs0=`obs0'
+		ereturn scalar obs1=`obs1'
+		ereturn scalar nreg0=`nreg0'
+		ereturn scalar nreg1=`nreg1'
+		ereturn matrix quantiles=`quants'
+		ereturn matrix coef0=`coef0'
+		ereturn matrix coef1=`coef1'
+		if "`boot'"==""{
+			ereturn matrix test_tot=`test_tot'
+			ereturn matrix test_char=`test_char'
+			ereturn matrix test_coef=`test_coef'
+			ereturn matrix test_miss0=`test_miss0'
+			ereturn matrix test_miss1=`test_miss1'
+		}
 	}
 end
 
-cap mata mata drop ev_boot()
 *Mata function doing the evaluation of the bootstrap results
 version 9.2
 mata void ev_boot(real matrix qte_cov_booti, qte_cov_obs0, qte_cov_obs1, qte_cov_def0, real rowvector qte_cov_def1, real rowvector qte_cov_defc, real colvector qte_cov_quant, string scalar contest, real scalar max, real scalar min, real scalar level, string scalar results, string scalar covariance, string scalar tot_dif, string scalar char, string scalar coef, string scalar miss0, string scalar miss1, string scalar test_tot, string scalar test_char, string scalar test_coef, string scalar test_miss0, string scalar test_miss1, string scalar disto0, string scalar disto1, string scalar dist0, string scalar dist1, string scalar distc)
@@ -497,12 +514,11 @@ mata void test_boot(real matrix qte_cov_boot, real rowvector qte_cov_def, real c
 }
 
 *Generic function, counterfactual distribution using group==0 to estimate and group==1 to predict
-cap prog drop cdeco_int
 program cdeco_int, rclas
 	version 9.2
-	syntax varlist [if] [in] [aweight/] , Group(varname) [ Method(string) Quantiles(numlist >0 <1 sort) NReg(real 100) scale(varlist) beta(real 0.9995) small(real 0.00001) max_it(real 50) Censoring(varname) Firstc(real 0.1) Secondc(real 0.05) NSteps(integer 3) right]
+	syntax varlist [if] [pweight/] , Group(varname) [ Method(string) Quantiles(numlist >0 <1 sort) NReg(real 100) scale(varlist) beta(real 0.9995) small(real 0.00001) max_it(real 50) Censoring(varname) Firstc(real 0.1) Secondc(real 0.05) NSteps(integer 3) right  est_opts(string)]
 		marksample touse
-		markout `touse' `counterfactual' `group'
+		markout `touse' `group'
 		tempname quants results obs0 obs1 obs nreg0 nreg1
 		if "`quantiles'"==""{
 			local quantiles "0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9"
@@ -510,7 +526,7 @@ program cdeco_int, rclas
 		tokenize "`quantiles'", parse(" ")
 		local i=1
 		while "`1'" != "" {
-			matrix `quants'=nullmat(`quants')\(`1')
+			matrix `quants'= nullmat(`quants') \ (`1')
 			mac shift 
 			local i=`i'+1
 		}
@@ -519,23 +535,31 @@ program cdeco_int, rclas
 		sca `nreg0'=`nreg'
 		sca `nreg1'=`nreg'
 		quietly gen `ref'=`touse'
-		quietly replace `ref'=0 if `group'==1
-		quietly gen `counter'=`touse'
-		quietly replace `counter'=0 if `group'==0
+		quietly replace `ref' = 0 if `group'==1
+		quietly gen `counter' = `touse'
+		quietly replace `counter' = 0 if `group'==0
 		quietly sum `ref'
 		sca `obs0'=r(sum)
 		quietly sum `counter'
 		sca `obs1'=r(sum)
 		sca `obs'=`obs0'+`obs1'
-		mata: qte_cov_quant=st_matrix("`quants'")
-		mata: qte_cov_obs0=mm_quantile(st_data(.,"`dep'","`ref'"),st_data(.,"`exp'","`ref'"),qte_cov_quant)'
-		mata: qte_cov_obs1=mm_quantile(st_data(.,"`dep'","`counter'"),st_data(.,"`exp'","`counter'"),qte_cov_quant)'
-		if "`method'"=="qr"{
-			mata: qte_cov_coef0=est_qr("`dep'","`varlist'","`exp'","`ref'","`nreg0'",`beta',`small',`max_it')
-			mata: qte_cov_coef1=est_qr("`dep'","`varlist'","`exp'","`counter'","`nreg1'",`beta',`small',`max_it')
-			mata: qte_cov_fitted0=rqpred("`quants'","`varlist'","`exp'","`ref'",qte_cov_coef0)
-			mata: qte_cov_fitted1=rqpred("`quants'","`varlist'","`exp'","`counter'",qte_cov_coef1)
-			mata: qte_cov_counter=rqpred("`quants'","`varlist'","`exp'","`counter'",qte_cov_coef0)
+		mata: qte_cov_quant = st_matrix("`quants'")
+		mata: qte_cov_obs0 = mm_quantile(st_data(.,"`dep'","`ref'"), st_data(.,"`exp'","`ref'"), qte_cov_quant)'
+		mata: qte_cov_obs1 = mm_quantile(st_data(.,"`dep'","`counter'"), st_data(.,"`exp'","`counter'"), qte_cov_quant)'
+		if "`method'" == "qr"{
+			local qlow = 0.5/`nreg0'
+			local qhigh = 1-0.5/`nreg0'
+			local qstep = 1/`nreg0'
+			qrprocess `dep' `varlist' if `ref' == 1 [pw=`exp'], vce(novar) qlow(`qlow') qhigh(`qhigh') qstep(`qstep') noprint `est_opts'
+			mata: qte_cov_coef0 = st_matrix("e(quantiles)")' \ st_matrix("e(coefmat)")
+			local qlow = 0.5/`nreg1'
+			local qhigh = 1-0.5/`nreg1'
+			local qstep = 1/`nreg1'
+			qrprocess `dep' `varlist' if `counter' == 1 [pw=`exp'], vce(novar) qlow(`qlow') qhigh(`qhigh') qstep(`qstep') noprint `est_opts'
+			mata: qte_cov_coef1 = st_matrix("e(quantiles)")' \ st_matrix("e(coefmat)")
+			mata: qte_cov_fitted0 = rqpred("`quants'","`varlist'","`exp'","`ref'",qte_cov_coef0)
+			mata: qte_cov_fitted1 = rqpred("`quants'","`varlist'","`exp'","`counter'",qte_cov_coef1)
+			mata: qte_cov_counter = rqpred("`quants'","`varlist'","`exp'","`counter'",qte_cov_coef0)
 		}
 		if "`method'"=="cqr"{
 			if "`right'"==""{	
@@ -604,7 +628,6 @@ program cdeco_int, rclas
 end
 
 *Mata function doing the unconditional estimation using cox
-capture mata mata drop coxpred()
 version 9.2
 mata real matrix coxpred(string scalar quants, string scalar varlist, string scalar weights, string scalar touse, real matrix Coef1)
 {
@@ -622,7 +645,6 @@ mata real matrix coxpred(string scalar quants, string scalar varlist, string sca
 	return(RQ_deco_ReT)
 }
 *Mata function doing the unconditional estimation using locsca
-capture mata mata drop lspred()
 version 9.2
 mata real matrix lspred(string scalar quants, string scalar varlist, string scalar scale1, string scalar weights, string scalar touse, real matrix Coef1)
 {
@@ -643,7 +665,6 @@ mata real matrix lspred(string scalar quants, string scalar varlist, string scal
 }
 
 * Clean Distribution Function                                                       
-cap mata mata drop cleandist()
 mata real cleandist(real matrix v){
 	n = rows(v)
 	m=cols(v)
@@ -661,7 +682,6 @@ mata real cleandist(real matrix v){
 }
 
 * Rearrangement (due to Chernozhukov et al), alternative for insertionsort function 
-cap mata mata drop rearrange()
 mata real rearrange(real colvector v){
 	n = rows(v)
 	F = J(n,1,0)
@@ -675,7 +695,6 @@ mata real rearrange(real colvector v){
 	return(vs)
 }
 
-cap mata mata drop getquantile()
 mata:
 real getquantile(real colvector y, real colvector F, real colvector TAU_)
 {
@@ -690,12 +709,10 @@ real getquantile(real colvector y, real colvector F, real colvector TAU_)
 end
 
 *Mata, logistic distribution
-cap mata mata drop logisticcdf()
 version 9.2
 mata real logisticcdf(x) return(1:/(1:+exp(-x)))
 
 *Mata function doing the unconditional estimation using logit, probit or lpm
-cap mata mata drop distpred()
 version 9.2
 mata real matrix distpred(string scalar quants,string scalar varlist,string scalar weights,string scalar touse,real matrix Coef1,method)
 {
@@ -715,7 +732,6 @@ mata real matrix distpred(string scalar quants,string scalar varlist,string scal
 }
 
 *Mata function doing the unconditional estimation using qr
-capture mata mata drop rqpred()
 version 9.2
 mata real matrix rqpred(string scalar quants, string scalar varlist, string scalar weights, string scalar touse, real matrix Coef1)
 {
@@ -731,27 +747,7 @@ mata real matrix rqpred(string scalar quants, string scalar varlist, string scal
 	return(RQ_deco_ReT)
 }
 
-*Mata function doing the conditional estimation using qr
-cap mata mata drop est_qr()
-mata real matrix est_qr(string scalar dep, string scalar reg, string scalar weight, string scalar touse, string scalar nquant1, real scalar beta, real scalar small, real scalar max_it)
-{
-	y=st_data(.,dep,touse)
-	x=st_data(.,tokens(reg),touse)
-	n=rows(x)
-	x=x,J(n,1,1)
-	k=cols(x)
-	w=st_data(.,weight,touse)
-	nquant=st_numscalar(nquant1)
-	coef=J(cols(x)+1,nquant,.)
-	coef[1,.]=(0.5/nquant:+(0..(nquant-1)):/nquant)
-	for (i=1; i<=nquant; i++) {
-		coef[2..(k+1),i]=rq_fnm(x, y, w, coef[1,i], beta, small, max_it, dep, reg, weight, touse)
-	}
-	return(coef)
-}
-
 *interior QR
-cap mata mata drop rq_fnm()
 mata real vector rq_fnm(real matrix X, real colvector dep, real colvector weight, real scalar p, real scalar beta, real scalar small, real scalar max_it, string scalar depo, string scalar rego, string scalar weighto, string scalar touse)
 {
 	weight=weight:/mean(weight)
@@ -824,14 +820,13 @@ mata real vector rq_fnm(real matrix X, real colvector dep, real colvector weight
 	}
 	y=-y'
 	if(missing(y)>0){
-		stata("qreg "+depo+" "+rego+" [aweight="+weighto+"] if "+touse+" ,quantile("+strofreal(p)+")",1)
+		stata("qreg "+depo+" "+rego+" [pweight="+weighto+"] if "+touse+" ,quantile("+strofreal(p)+")",1)
 		y=st_matrix("e(b)")'
 	}
 	return(y)
 }
 
 *internal function for interior QR
-cap mata mata drop bound()
 mata real vector bound(real vector x, real vector dx)
 {
 	b = J(1,length(x),1e20)
@@ -840,7 +835,6 @@ mata real vector bound(real vector x, real vector dx)
 	return(b)
 }
 
-cap mata mata drop est_logit()
 *Mata function doing the conditional estimation using probit
 version 9.2
 mata real matrix est_logit(string scalar dep1, string scalar reg1, string scalar wei1, string scalar touse, string scalar nreg1)
@@ -863,7 +857,7 @@ mata real matrix est_logit(string scalar dep1, string scalar reg1, string scalar
 	for (i=1; i<=nreg; i++) {
 		level=depeval[i]
 		st_store(.,idx,touse,dep:<=level)
-		stata("logit "+st_varname(idx)+" "+reg1+" [iweight="+wei1+"] if "+touse+"==1, asis",1)
+		stata("logit "+st_varname(idx)+" "+reg1+" [pweight="+wei1+"] if "+touse+"==1, asis",1)
 		coef=coef,(level\st_matrix("e(b)")')
 	}
 	coef=coef[.,select(1..nreg,colmissing(coef):==0)]
@@ -871,7 +865,6 @@ mata real matrix est_logit(string scalar dep1, string scalar reg1, string scalar
 	return(coef)
 }
 
-cap mata mata drop est_probit()
 *Mata function doing the conditional estimation using probit
 version 9.2
 mata real matrix est_probit(string scalar dep1, string scalar reg1, string scalar wei1, string scalar touse, string scalar nreg1)
@@ -904,7 +897,6 @@ mata real matrix est_probit(string scalar dep1, string scalar reg1, string scala
 	return(coef)
 }
 
-cap mata mata drop est_lpm()
 *Mata function doing the conditional estimation using linear probability model
 version 9.2
 mata real matrix est_lpm(string scalar dep1, string scalar reg1, string scalar wei1, string scalar touse, string scalar nreg1)
@@ -934,7 +926,6 @@ mata real matrix est_lpm(string scalar dep1, string scalar reg1, string scalar w
 	return(coef)
 }
 
-cap mata mata drop est_loc()
 *Mata function doing the conditional estimation using location model
 version 9.2
 mata real matrix est_loc(string scalar dep1, string scalar reg1, string scalar wei1, string scalar touse, string scalar nreg1)
@@ -953,7 +944,6 @@ mata real matrix est_loc(string scalar dep1, string scalar reg1, string scalar w
 	return(coef)
 }
 
-cap mata mata drop est_locsca()
 *Mata function doing the conditional estimation using location model
 version 9.2
 mata real matrix est_locsca(string scalar dep1, string scalar reg1, string scalar scale1, string scalar wei1, string scalar touse, string scalar nreg1)
@@ -974,7 +964,6 @@ mata real matrix est_locsca(string scalar dep1, string scalar reg1, string scala
 	return(coef)
 }
 
-cap mata mata drop est_cox()
 *Mata function doing the conditional estimation using location model
 version 9.2
 mata real matrix est_cox(string scalar dep1, string scalar reg1, string scalar wei1, string scalar touse)
@@ -994,7 +983,6 @@ mata real matrix est_cox(string scalar dep1, string scalar reg1, string scalar w
 }
 
 *Mata function doing the conditional estimation using cqr
-cap mata mata drop est_cqr()
 mata real matrix est_cqr(string scalar dep, string scalar censoring, string scalar reg, string scalar weight, string scalar touse, string scalar nquant1, real scalar firstc, real scalar secondc, real scalar nsteps, real scalar right, real scalar beta, real scalar small, real scalar max_it)
 {
 	nquant=st_numscalar(nquant1)
@@ -1014,7 +1002,6 @@ mata real matrix est_cqr(string scalar dep, string scalar censoring, string scal
 	return(coef)
 }
 
-cap mata mata drop est_cqrl()
 mata real matrix est_cqrl(real colvector y, real colvector c, real matrix x, real colvector w, real colvector quants, real scalar c1, real scalar c2, real scalar nsteps, real scalar beta, real scalar small, real scalar max_it, string scalar dep, string scalar reg, string scalar weight, string scalar touse)
 {
 	coef=J(cols(x),rows(quants),.)
@@ -1045,7 +1032,6 @@ mata real matrix est_cqrl(real colvector y, real colvector c, real matrix x, rea
 	return(coef)
 }
 
-cap mata mata drop logit()
 *Mata function doing the logit estimation
 version 9.2
 mata real matrix logit(real colvector dep, real matrix reg, real colvector wei)
