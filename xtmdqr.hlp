@@ -1,19 +1,16 @@
 {smcl}
-{* 28July2022}{...}
+{* 03Aug2022}{...}
 {cmd:help xtmdqr}
 {hline}
 
 {title:Title}
 
 {p2colset 5 14 16 2}{...}
-{p2col :{hi:xtmdqr} {hline 2}}Fixed-, between-, and random-effects quantile regression{p_end}
+{p2col :{hi:xtmdqr} }Fixed-, between-, and random-effects quantile regression{p_end}
 {p2colreset}{...}
 
 
 {title:Syntax}
-
-{p 8 16 2}{cmd:xtreg} {depvar} [{indepvars}] {ifin}
-[{cmd:, re} {it:{help xtreg##reoptions:RE_options}}]
 
 {p 8 17 2}
 {cmd:xtmdqr} {depvar} [{indepvars}] {ifin} 
@@ -119,7 +116,8 @@ set to "0.1 0.25 0.5 0.75 0.9".
 {synopt:{cmd:e(N_groups)}}number of groups{p_end}
 
 {phang}Macros{p_end}
-{synopt:{cmd:e(command)}}{cmd:mdqr}{p_end}
+{synopt:{cmd:e(cmd)}}{cmd:mdqr}{p_end}
+{synopt:{cmd:e(plotprocess)}}inputs for {cmd:plotprocess}{p_end}
 {synopt:{cmd:e(cmdline)}}command as typed{p_end}
 {synopt:{cmd:e(title)}}Minimum distance quantile Regression{p_end}
 {synopt:{cmd:e(depvar)}}name of dependent variable{p_end}
@@ -158,11 +156,9 @@ Type {cmd:ssc install moremata} to install it.
 
 {title:References}
 
-
 {phang} Melly, B., and M. Pons. 2022. Minimum Distance Estimation of Quantile 
 Panel Data Models. {it:Working paper}. 
 {browse "http://martinapons.github.io/files/MD.pdf":http:/martinapons.github.io/files/MD.pdf}
-
 
 {phang} Jann, B. 2005b. moremata: Stata module (Mata) to provide various 
 functions. Statistical Software Components S455001, Department of Economics, 
