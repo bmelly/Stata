@@ -1,12 +1,12 @@
 {smcl}
-{* *! version 1.0.0  5mar2010}{...}
+{* *! version 1.0.1  3aug2022}{...}
 {cmd:help cdeco_jmp} 
 {hline}
 
 {title:Title}
 
 {p2colset 5 25 22 2}{...}
-{p2col :{hi: cdeco_jmp} {hline 2}}Counterfactual decomposition of differences in distributions à la Juhn, Murphy and Pierce (1993){p_end}
+{p2col :{hi: cdeco_jmp} {hline 2}}Counterfactual decomposition of differences in distributions Ã  Juhn, Murphy and Pierce (1993){p_end}
 {p2colreset}{...}
 
 
@@ -131,6 +131,9 @@ The second set of null hypotheses is that there are no difference at all. This i
 stronger than the absence of any mean effect. Other null hypotheses of constant QE (but at a different level than 0)
 can be added with the option {opt cons_test(#)}. The null hypthesis that all QEs are equal to the median policy 
 effect is also tested. Finally, both null-hypotheses of first-order stochastic dominance are tested.
+
+{pstd} The results can easily be plotted with the command {help plotdeco}.
+See the {helpb cdeco_jmp##plot_example:example below}.
 
 
 {title:Options}
@@ -288,6 +291,33 @@ and {opt noprinttest}.
 {opt noprinttest}suppresses the tables containing the tests but not the tables containing the decomposition. 
 
 
+{marker examples}{...}
+{title:Examples with artificial data}
+
+{pstd}Set the number of observations and the seed.{p_end}
+{phang2}. {stata set obs 1000}{p_end}
+{phang2}. {stata set seed 1}{p_end}
+
+{pstd}Generate the data.{p_end}
+{phang2}. {stata generate female=(uniform()<0.5)}{p_end}
+{phang2}. {stata generate experience=4*invchi2(5,uniform())*(1-0.4*female)}{p_end}
+{phang2}. {stata generate lwage=2+experience*0.03 -0.1*female+invnormal(uniform())*0.5}{p_end}
+
+{pstd}Perform the decomposition at 5 different quantiles.{p_end}
+{phang2}. {stata cdeco_jmp lwage experience, group(female) quantile(0.1 0.2 0.5 0.75 0.9)}{p_end}
+{marker plot_example}{...}
+{pstd}Perform the decomposition at 99 different quantiles without showing the results.{p_end}
+{phang2}. {stata cdeco_jmp lwage experience, group(female) quantile(0.01(0.01)0.99) noprint}{p_end}
+{pstd}Plot the results with the defaut.{p_end}
+{phang2}. {stata plotdeco}{p_end}
+{pstd}Show only the last panel.{p_end}
+{phang2}. {stata plotdeco all}{p_end}
+{pstd}Show only the component "residuals".{p_end}
+{phang2}. {stata plotdeco residuals}{p_end}
+
+
+
+
 {title:Saved results}
 
 {pstd}
@@ -350,8 +380,16 @@ the residual distribution from {it:group}==00 and the covariates distribution fr
 
 {title:Version requirements}
 
-{p 4 4 2}This command requires Stata 9.2. In addition the package {cmd:moremata} must be installed. 
-Type {net "describe moremata, from(http://fmwww.bc.edu/repec/bocode/m/)":ssc describe moremata}{txt}
+{p 4 4 2}This command requires Stata 9.2. In addition the package {cmd:moremata} 
+and the command {cmd:qrprocess} must be installed. 
+Type {stata "ssc install moremata"} and
+{stata "net install qrprocess, from("https://raw.githubusercontent.com/bmelly/Stata/main/")"}
+to install these packages.
+
+
+{title:Methods and Formulas}
+
+{p 4 6} See Chernozhukov, Fernandez-Val and Melly (2013).
 
 
 {title:Reference}
@@ -361,49 +399,51 @@ David Autor, Lawrence Katz and Melissa Kearney (2005): Rising wage inequality: t
 NBER Working Paper No. 11628.
 
 {phang}
-Victor Chernozhukov, Ivan Fernandez-Val and Alfred Galichon (2007): Quantile and Probability Curves without Crossing.
-MIT Department of Economics Working Paper No. 07-15.
+Victor Chernozhukov, Ivan Fernandez-Val and Alfred Galichon (2010): Quantile and Probability Curves without Crossing.
+Econometrica, 78(3), 1093-1125.
 
 {phang}
-Victor Chernozhukov, Ivan Fernandez-Val and Blaise Melly (2008): Inference on cdeco Distributions.
-MIT Department of Economics Working Paper No. 08-16.
+Victor Chernozhukov, Ivan Fernandez-Val and Blaise Melly (2013): Inference on Counterfactual Distributions.
+Econometrica, 81(6), 2205-2268.
 
 {phang}
 Victor Chernozhukov and Han Hong (2002): Three-step Censored Quantile Regression and Extramarital Affairs.
 Journal of the American Statistical Association, 97, 872-881.
 
-{p 4 6} Chinhui Juhn, Kevin M. Murphy and Brooks Pierce (1993):
+{phang}
+Chinhui Juhn, Kevin M. Murphy and Brooks Pierce (1993):
 Wage Inequality and the Rise in Returns to Skill.
 The Journal of Political Economy, 101(3), pp. 410-442.
 
 {phang}
 Roger Koenker and Gilbert Bassett (1978): Regression quantiles. Econometrica, 46, 33-50.
 
-{p 4 6} Blaise Melly (2005): Decomposition of differences in distribution using quantile regression. 
+{phang} 
+Blaise Melly (2005): Decomposition of differences in distribution using quantile regression. 
 Labour Economics, 12, 577-590.
 
 
 {title:Remarks}
 
-{p 4 4}This is a first and preliminary version. Please feel free to share your comments, reports of bugs and
+{p 4 4}This is a preliminary version. Please feel free to share your comments, reports of bugs and
 propositions for extensions.
 
-{p 4 4}If you use this command in your work, please cite Melly (2005) or Chernozhukov, Fernandez-Val and Melly (2008).
+{p 4 4}If you use this command in your work, please cite Chernozhukov, Ivan Fernandez-Val and Blaise Melly (2013).
 
 
 {title:Disclaimer}
 
-{p 4 4 2}THIS SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESSED 
-OR IMPLIED. THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE PROGRAM IS WITH YOU. 
-SHOULD THE PROGRAM PROVE DEFECTIVE, YOU ASSUME THE COST OF ALL NECESSARY SERVICING, REPAIR OR CORRECTION.
+{p 4 4 2}This software is provided "as is" without warranty of any kind,
+either expressed or implied. The entire risk as to the quality and performance of the program is with you
+should the program prove defective, you assume the cost of all necessary servicing, repair or correction.
 
-{p 4 4 2}IN NO EVENT WILL THE COPYRIGHT HOLDERS OR THEIR EMPLOYERS, OR ANY OTHER PARTY WHO
-MAY MODIFY AND/OR REDISTRIBUTE THIS SOFTWARE, BE LIABLE TO YOU FOR DAMAGES, INCLUDING ANY 
-GENERAL, SPECIAL, INCIDENTAL OR CONSEQUENTIAL DAMAGES ARISING OUT OF THE USE OR INABILITY TO USE THE PROGRAM.
+{p 4 4 2}In no event will the copyright holders or their emploers, or any other party who
+may modify and/or redistribute this software be liable to you for damages, including any
+general, special, incidental or consequential damages arising out of the use or inability to use the program.
 
 
 {title:Authors}
 
 {p 4 6}Victor Chernozhukov, Ivan Fernandez-Val and Blaise Melly{p_end}
-{p 4 6}MIT, Boston University and Brown University{p_end}
-{p 4 6}blaise_melly@brown.edu{p_end}
+{p 4 6}MIT, Boston University and Bern University{p_end}
+{p 4 6}blaise.melly@unibe.ch{p_end}
