@@ -1,7 +1,6 @@
 *Codes implementing the estimators proposed in Chernozhukov, Fernandez-Val and Melly
 *Codes for QTE, pointwise and uniform confidence intervals based on bootstrap and Kolmogorov-Smirnov statistic
 
-cap prog drop counterfactual
 program counterfactual, eclass
 	version 9.2
 	capt findfile lmoremata.mlib
@@ -9,8 +8,24 @@ program counterfactual, eclass
       	di as error "-moremata- is required; type {stata ssc install moremata} and restart Stata."
 		error 499
 	}
+*check that qrprocess is installed
+	capt findfile qrprocess.ado
+	if _rc {
+      	di as error "-qrprocess- is required; type {net install qrprocess, from("https://raw.githubusercontent.com/bmelly/Stata/main/")}"
+		error 499
+	}
+	if replay() {
+		if "`e(cmd)'"!="counterfactual" { 
+			error 301 
+		} 
+		if _by() {
+			error 190 
+		}
+        syntax [, Level(cilevel)]
+		ereturn display, level(`level')
+ 	}
 	else {
-		syntax varlist [if] [in] [aweight/], [Group(varname) Counterfactual(varlist) Method(string) QLow(real 0.1) QHigh(real 0.9) QStep(real 0.1) Quantiles(string) NReg(real 100) Reps(integer 100) Level(cilevel) First(real 0.1) Last(real 0.9) noboot noprint SCale(varlist) counterscale(varlist) SAVing(string) CONS_test(string) beta(real 0.9995) small(real 0.00001) max_it(real 50) Censoring(varname) Firstc(real 0.1) Secondc(real 0.05) NSteps(integer 3) RIght]
+		syntax varlist [if] [in] [pweight/], [Group(varname) Counterfactual(varlist) Method(string) QLow(real 0.1) QHigh(real 0.9) QStep(real 0.1) Quantiles(string) NReg(real 100) Reps(integer 100) Level(cilevel) First(real 0.1) Last(real 0.9) noboot noprint SCale(varlist) counterscale(varlist) SAVing(string) CONS_test(string) beta(real 0.9995) small(real 0.00001) max_it(real 50) Censoring(varname) Firstc(real 0.1) Secondc(real 0.05) NSteps(integer 3) RIght est_opts(string)]
 		local nreg=round(`nreg')
 		if `nreg'<1{
 			dis as error "The option nreg must be a strictly positive integer."
@@ -48,9 +63,9 @@ program counterfactual, eclass
 			tempvar exp
 			gen `exp'=1
 		}
-		quiet _rmcoll `varlist' [aw=`exp'] if `touse'
+		quiet _rmcoll `varlist' [pw=`exp'] if `touse'
 		local varlist `r(varlist)'
-		qte_cov_int `dep' `varlist' `if' `in' [aweight=`exp'], group(`group') counterfactual(`counterfactual') method(`method') qlow(`qlow') qhigh(`qhigh') qstep(`qstep') quantiles(`quantiles') nreg(`nreg') scale(`scale') counterscale(`counterscale') beta(`beta') small(`small') max_it(`max_it') censoring(`censoring') firstc(`firstc') secondc(`secondc') nsteps(`nsteps') `right'
+		qte_cov_int `dep' `varlist' `if' `in' [pweight=`exp'], group(`group') counterfactual(`counterfactual') method(`method') qlow(`qlow') qhigh(`qhigh') qstep(`qstep') quantiles(`quantiles') nreg(`nreg') scale(`scale') counterscale(`counterscale') beta(`beta') small(`small') max_it(`max_it') censoring(`censoring') firstc(`firstc') secondc(`secondc') nsteps(`nsteps') `right' est_opts(`est_opts')
 		tempname coefficients covariance qte distributions obs0 obsc quants constest tests fit ref nreg0
 		sca `nreg0'=r(nreg)
 		matrix `quants'=r(quants)
@@ -102,7 +117,7 @@ program counterfactual, eclass
 			di in gr "(bootstrapping " _c
 			forvalues i=1/`reps'{
 				bsample
-				qte_cov_int `dep' `varlist' `if' `in' [aweight=`exp'], group(`group') counterfactual(`counterfactual') method(`method') qlow(`qlow') qhigh(`qhigh') qstep(`qstep') quantiles(`quantiles') nreg(`nreg') scale(`scale') counterscale(`counterscale') beta(`beta') small(`small') max_it(`max_it') censoring(`censoring') firstc(`firstc') secondc(`secondc') nsteps(`nsteps') `right'
+				qte_cov_int `dep' `varlist' `if' `in' [pweight=`exp'], group(`group') counterfactual(`counterfactual') method(`method') qlow(`qlow') qhigh(`qhigh') qstep(`qstep') quantiles(`quantiles') nreg(`nreg') scale(`scale') counterscale(`counterscale') beta(`beta') small(`small') max_it(`max_it') censoring(`censoring') firstc(`firstc') secondc(`secondc') nsteps(`nsteps') `right'
 				mata: qte_cov_boot=qte_cov_boot\(qte_cov_res,mm_quantile(st_data(.,"`dep'","`touse'"),st_data(.,"`exp'","`touse'"),qte_cov_quant)',qte_cov_fitted,qte_cov_counter)
 				if round(`i'/`every')==(`i'/`every'){
 					drop _all
@@ -141,11 +156,19 @@ program counterfactual, eclass
 		mat rownames `coefficients'=`dep'
 		mat colnames `covariance'=`conam'
 		mat rownames `covariance'=`conam'
-		ereturn post `coefficients' `covariance', dep(`dep') obs(`obs') esample(`touse')
+		if "`boot'" == "" {
+			ereturn post `coefficients' `covariance', dep(`dep') obs(`obs') esample(`touse')
+			ereturn local vce "bootstrap"
+		}
+		else {
+			ereturn post `coefficients', dep(`dep') obs(`obs') esample(`touse')
+			ereturn local vce "novar"
+		}
 		mat rownames `qte'=`conam'
 		mat colnames `qte'=qte point_se uniform_lb uniform_ub
 		ereturn matrix qte=`qte'
 		ereturn local cmd "counterfactual"
+		ereturn local plotdeco "e(quantiles) Quantile"
 		ereturn scalar obs0=`obs0'
 		ereturn scalar obsc=`obsc'
 		ereturn scalar nreg=`nreg'
@@ -262,7 +285,6 @@ program counterfactual, eclass
 	}
 end
 
-cap mata mata drop ev_boot()
 *Mata function doing the evaluation of the bootstrap results
 version 9.2
 mata void ev_boot(numeric matrix qte_cov_booti, numeric rowvector qte_cov_def, numeric rowvector qte_cov_obs, numeric rowvector qte_cov_deff, numeric rowvector qte_cov_defc, numeric colvector qte_cov_quant, numeric scalar max, numeric scalar min, numeric scalar level, string scalar results, string scalar covariance, string scalar tests, string scalar contest, string scalar distributions, string scalar fit)
@@ -400,10 +422,9 @@ mata void ev_boot(numeric matrix qte_cov_booti, numeric rowvector qte_cov_def, n
 }
 
 *Generic function, counterfactual distribution using group==0 to estimate and group==1 to predict
-cap prog drop qte_cov_int
 program qte_cov_int, rclas
 	version 9.2
-	syntax varlist [if] [in] [aweight/] , [Group(varname) Counterfactual(varlist)  Method(string)  QLow(real 0.1) QHigh(real 0.9) QStep(real 0.1) Quantiles(string) NReg(real 100) scale(varlist) counterscale(varlist) beta(real 0.9995) small(real 0.00001) max_it(real 50) Censoring(varname) Firstc(real 0.1) Secondc(real 0.05) NSteps(integer 3) right] 
+	syntax varlist [if] [in] [pweight/] , [Group(varname) Counterfactual(varlist)  Method(string)  QLow(real 0.1) QHigh(real 0.9) QStep(real 0.1) Quantiles(string) NReg(real 100) scale(varlist) counterscale(varlist) beta(real 0.9995) small(real 0.00001) max_it(real 50) Censoring(varname) Firstc(real 0.1) Secondc(real 0.05) NSteps(integer 3) right est_opts(string)] 
 		marksample touse
 		markout `touse' `counterfactual' `group'
 		tempname quants results obs0 obsc obs
@@ -458,9 +479,14 @@ program qte_cov_int, rclas
 			sca `obsc'=r(sum)
 			sca `obs'=`obs0'+`obsc'
 			if "`method'"=="qr"{
-				mata: qte_cov_coef=est_qr("`dep'","`varlist'","`exp'","`ref'","`nreg0'",`beta',`small',`max_it')
-				mata: qte_cov_fitted=rqpred("`quants'","`varlist'","`exp'","`ref'",qte_cov_coef)
-				mata: qte_cov_counter=rqpred("`quants'","`varlist'","`exp'","`counter'",qte_cov_coef)
+				local qlow = 0.5/`nreg0'
+				local qhigh = 1-0.5/`nreg0'
+				local qstep = 1/`nreg0'
+				qrprocess `dep' `varlist' if `ref' == 1 [pw=`exp'], vce(novar) qlow(`qlow') qhigh(`qhigh') qstep(`qstep') noprint `est_opts'
+				mata: qte_cov_coef = st_matrix("e(quantiles)")'\st_matrix("e(coefmat)")
+				mata: qte_cov_coef = est_qr("`dep'", "`varlist'", "`exp'","`ref'","`nreg0'",`beta',`small',`max_it')
+				mata: qte_cov_fitted = rqpred("`quants'", "`varlist'", "`exp'","`ref'",qte_cov_coef)
+				mata: qte_cov_counter = rqpred("`quants'", "`varlist'", "`exp'","`counter'",qte_cov_coef)
 			}
 			if "`method'"=="cqr"{
 				if "`right'"==""{	
@@ -515,7 +541,11 @@ program qte_cov_int, rclas
 			quietly sum `dep' if `touse'
 			sca `obs'=r(N)
 			if "`method'"=="qr"{
-				mata: qte_cov_coef=est_qr("`dep'","`varlist'","`exp'","`touse'","`nreg0'",`beta',`small',`max_it')
+				local qlow = 0.5/`nreg0'
+				local qhigh = 1-0.5/`nreg0'
+				local qstep = 1/`nreg0'
+				qrprocess `dep' `varlist' if `touse' == 1 [pw=`exp'], vce(novar) qlow(`qlow') qhigh(`qhigh') qstep(`qstep') noprint `est_opts'
+				mata: qte_cov_coef = st_matrix("e(quantiles)")'\st_matrix("e(coefmat)")
 				mata: qte_cov_fitted=rqpred("`quants'","`varlist'","`exp'","`touse'",qte_cov_coef)
 				mata: qte_cov_counter=rqpred("`quants'","`counterfactual'","`exp'","`touse'",qte_cov_coef)
 			}
@@ -577,7 +607,6 @@ program qte_cov_int, rclas
 end
 
 *Mata function doing the unconditional estimation using cox
-capture mata mata drop coxpred()
 version 9.2
 mata numeric matrix coxpred(string scalar quants, string scalar varlist, string scalar weights, string scalar touse, numeric matrix Coef1)
 {
@@ -595,7 +624,6 @@ mata numeric matrix coxpred(string scalar quants, string scalar varlist, string 
 	return(RQ_deco_ReT)
 }
 *Mata function doing the unconditional estimation using locsca
-capture mata mata drop lspred()
 version 9.2
 mata numeric matrix lspred(string scalar quants, string scalar varlist, string scalar scale1, string scalar weights, string scalar touse, numeric matrix Coef1)
 {
@@ -616,7 +644,6 @@ mata numeric matrix lspred(string scalar quants, string scalar varlist, string s
 }
 
 * Clean Distribution Function                                                       
-cap mata mata drop cleandist()
 mata real cleandist(real matrix v){
 	n = rows(v)
 	m=cols(v)
@@ -634,7 +661,6 @@ mata real cleandist(real matrix v){
 }
 
 * Rearrangement (due to Chernozhukov et al), alternative for insertionsort function 
-cap mata mata drop rearrange()
 mata real rearrange(real colvector v){
 	n = rows(v)
 	F = J(n,1,0)
@@ -648,7 +674,6 @@ mata real rearrange(real colvector v){
 	return(vs)
 }
 
-cap mata mata drop getquantile()
 mata:
 numeric getquantile(numeric colvector y, numeric colvector F, numeric colvector TAU_)
 {
@@ -663,12 +688,10 @@ numeric getquantile(numeric colvector y, numeric colvector F, numeric colvector 
 end
 
 *Mata, logistic distribution
-cap mata mata drop logisticcdf()
 version 9.2
 mata real logisticcdf(x) return(1:/(1:+exp(-x)))
 
 *Mata function doing the unconditional estimation using logit, probit or lpm
-cap mata mata drop distpred()
 version 9.2
 mata numeric matrix distpred(string scalar quants,string scalar varlist,string scalar weights,string scalar touse,numeric matrix Coef1,method)
 {
@@ -688,7 +711,6 @@ mata numeric matrix distpred(string scalar quants,string scalar varlist,string s
 }
 
 *Mata function doing the unconditional estimation using qr
-capture mata mata drop rqpred()
 version 9.2
 mata numeric matrix rqpred(string scalar quants, string scalar varlist, string scalar weights, string scalar touse, numeric matrix Coef1)
 {
@@ -705,7 +727,6 @@ mata numeric matrix rqpred(string scalar quants, string scalar varlist, string s
 }
 
 *Mata function doing the conditional estimation using qr
-cap mata mata drop est_qr()
 mata numeric matrix est_qr(string scalar dep, string scalar reg, string scalar weight, string scalar touse, string scalar nquant1, numeric scalar beta, numeric scalar small, numeric scalar max_it)
 {
 	y=st_data(.,dep,touse)
@@ -724,7 +745,6 @@ mata numeric matrix est_qr(string scalar dep, string scalar reg, string scalar w
 }
 
 *interior QR
-cap mata mata drop rq_fnm()
 mata real vector rq_fnm(numeric matrix X, numeric colvector dep, numeric colvector weight, numeric scalar p, numeric scalar beta, numeric scalar small, numeric scalar max_it, string scalar depo, string scalar rego, string scalar weighto, string scalar touse)
 {
 	weight=weight:/mean(weight)
@@ -797,14 +817,13 @@ mata real vector rq_fnm(numeric matrix X, numeric colvector dep, numeric colvect
 	}
 	y=-y'
 	if(missing(y)>0){
-		stata("qreg "+depo+" "+rego+" [aweight="+weighto+"] if "+touse+" ,quantile("+strofreal(p)+")",1)
+		stata("qreg "+depo+" "+rego+" [pweight="+weighto+"] if "+touse+" ,quantile("+strofreal(p)+")",1)
 		y=st_matrix("e(b)")'
 	}
 	return(y)
 }
 
 *internal function for interior QR
-cap mata mata drop bound()
 mata real vector bound(numeric vector x, numeric vector dx)
 {
 	b = J(1,length(x),1e20)
@@ -813,7 +832,6 @@ mata real vector bound(numeric vector x, numeric vector dx)
 	return(b)
 }
 
-cap mata mata drop est_logit()
 *Mata function doing the conditional estimation using probit
 version 9.2
 mata numeric matrix est_logit(string scalar dep1, string scalar reg1, string scalar wei1, string scalar touse, string scalar nreg1)
@@ -844,7 +862,6 @@ mata numeric matrix est_logit(string scalar dep1, string scalar reg1, string sca
 	return(coef)
 }
 
-cap mata mata drop est_probit()
 *Mata function doing the conditional estimation using probit
 version 9.2
 mata numeric matrix est_probit(string scalar dep1, string scalar reg1, string scalar wei1, string scalar touse, string scalar nreg1)
@@ -877,7 +894,6 @@ mata numeric matrix est_probit(string scalar dep1, string scalar reg1, string sc
 	return(coef)
 }
 
-cap mata mata drop est_lpm()
 *Mata function doing the conditional estimation using linear probability model
 version 9.2
 mata numeric matrix est_lpm(string scalar dep1, string scalar reg1, string scalar wei1, string scalar touse, string scalar nreg1)
@@ -907,7 +923,6 @@ mata numeric matrix est_lpm(string scalar dep1, string scalar reg1, string scala
 	return(coef)
 }
 
-cap mata mata drop est_loc()
 *Mata function doing the conditional estimation using location model
 version 9.2
 mata numeric matrix est_loc(string scalar dep1, string scalar reg1, string scalar wei1, string scalar touse, string scalar nreg1)
@@ -926,7 +941,6 @@ mata numeric matrix est_loc(string scalar dep1, string scalar reg1, string scala
 	return(coef)
 }
 
-cap mata mata drop est_locsca()
 *Mata function doing the conditional estimation using location model
 version 9.2
 mata numeric matrix est_locsca(string scalar dep1, string scalar reg1, string scalar scale1, string scalar wei1, string scalar touse, string scalar nreg1)
@@ -947,7 +961,6 @@ mata numeric matrix est_locsca(string scalar dep1, string scalar reg1, string sc
 	return(coef)
 }
 
-cap mata mata drop est_cox()
 *Mata function doing the conditional estimation using location model
 version 9.2
 mata numeric matrix est_cox(string scalar dep1, string scalar reg1, string scalar wei1, string scalar touse)
@@ -966,7 +979,6 @@ mata numeric matrix est_cox(string scalar dep1, string scalar reg1, string scala
 }
 
 *Mata function doing the conditional estimation using cqr
-cap mata mata drop est_cqr()
 mata numeric matrix est_cqr(string scalar dep, string scalar censoring, string scalar reg, string scalar weight, string scalar touse, string scalar nquant1, numeric scalar firstc, numeric scalar secondc, numeric scalar nsteps, numeric scalar right, numeric scalar beta, numeric scalar small, numeric scalar max_it)
 {
 	c=st_data(.,censoring,touse)
@@ -986,7 +998,6 @@ mata numeric matrix est_cqr(string scalar dep, string scalar censoring, string s
 	return(coef)
 }
 
-cap mata mata drop est_cqrl()
 mata numeric matrix est_cqrl(numeric colvector y, numeric colvector c, numeric matrix x, numeric colvector w, numeric colvector quants, numeric scalar c1, numeric scalar c2, numeric scalar nsteps, numeric scalar beta, numeric scalar small, numeric scalar max_it, string scalar dep, string scalar reg, string scalar weight, string scalar touse)
 {
 	coef=J(cols(x),rows(quants),.)
@@ -1018,7 +1029,6 @@ mata numeric matrix est_cqrl(numeric colvector y, numeric colvector c, numeric m
 }
 
 *Programs taken from sqreg to check that the inputed quantiles make sense
-cap prog drop SetQ
 program define SetQ, rclass
 	local orig "`*'"
 	tokenize "`*'", parse(" ,")
@@ -1032,7 +1042,6 @@ program define SetQ, rclass
 	}
 end
 
-cap prog drop FixNumb
 program define FixNumb , rclass
 	local orig "`1'"
 	mac shift
@@ -1049,7 +1058,6 @@ program define FixNumb , rclass
 	}
 end
 
-cap prog drop Invalid
 program define Invalid
 	di in red "quantiles(`1') invalid"
 	if "`2'" != "" {
