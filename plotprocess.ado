@@ -1,13 +1,19 @@
 *plotprocess: plot quantile regression and distribution regression coefficients
-*! version 1.1.1  24.11.2020  Blaise Melly
+*! version 1.1.2  03.08.2022  Blaise Melly
 *New: options compare, compare_ci and compare_color
 
 program plotprocess
 *version control
 	version 9.2
-	if "`e(cmd)'" != "qrprocess" & "`e(cmd)'" != "drprocess" & "`e(cmd)'" != "mdqr"{
-		dis in red "plotprocess can only be used after qrprocess, drprocess, or mdqr."
-		error 301
+	*the last estimates must exist en allow for plotprocess
+	if "`e(plotprocess)'" == ""{
+		if "`e(cmd)'" == "" {
+			error 301
+		}
+		else{ 
+			dis in red "plotprocess cannot be used after `e(cmd)'."
+			error 332
+		}
 	}
 	syntax [anything(name=namelist)] [, Pointwise Uniform Both None lcolor(string) ucolor(string) pcolor(string) legend(string) ytitle(string) xtitle(string) title(string) OTHER_graph_options(string) COMBINE_options(string) Level(string) compare(string) compare_ci compare_color(string)]
 	local fvops = "`s(fvops)'" == "true" & _caller() >= 11
@@ -40,7 +46,7 @@ program plotprocess
 		if _rc>0{
 			dis in red "The uniform confidence bands cannot be plotted because they have not been estimated by `e(cmd)'."
 			dis in red "Call `e(cmd)' again with the suboption functional of the option vce() turned on."
-			local uniform""
+			local uniform ""
 		}
 	}
 	if "`pointwise'"=="pointwise"{
@@ -50,18 +56,23 @@ program plotprocess
 			local pointwise ""
 		}
 	}
-	tempvar coef quantile quantiles
+	tempvar coef quantiles
+	tempname quantile
 	quiet gen `coef'=.
-	if "`e(cmd)'"=="qrprocess" | "`e(cmd)'"=="mdqr"{
-		mat `quantile'=e(quantiles)
+	local input "`e(plotprocess)'"
+	gettoken index xtitle_i : input
+	mat `quantile' = `index'
+/*	if "`e(cmd)'"=="qrprocess" | "`e(cmd)'"=="mdqr"{
+		mat `quantile' = e(quantiles)
 	}
 	else{
-		mat `quantile'=e(thresholds)
+		mat `quantile' = e(thresholds)
 		if "`ols'"=="ols" | "`ols_ci'"=="ols_ci"{
 			dis in red "The options ols and ols_ci make sense only with quantile regression."
 			exit
 		}
 	}
+*/
 	if "`lcolor'"==""{
 		local lcolor "black"
 	}
@@ -73,20 +84,20 @@ program plotprocess
 	}	
 	local nq=rowsof(`quantile')
 	quiet svmat `quantile', name(`quantiles')
-	mata: PlotProcessCoeF=st_matrix("e(b)")'
-	if "`pointwise'"=="pointwise"{
+	mata: PlotProcessCoeF = st_matrix("e(b)")'
+	if "`pointwise'" == "pointwise"{
 		tempvar pointl pointu
 		quie gen `pointl'=.
 		quie gen `pointu'=.
 		cap confirm matrix e(pointwise)
 		if _rc==0 & "`level'"==""{
-			mata: PlotProcessPoinT=st_matrix("e(pointwise)")
+			mata: PlotProcessPoinT = st_matrix("e(pointwise)")
 		}
 		else{
 			if "`level'"==""{
-				local level=c(level)
+				local level = c(level)
 			}
-			mata: PlotProcessPoinT=st_matrix("e(b)")'-invttail(st_numscalar("e(df_r)"),(100-`level')/200)*sqrt(diagonal(st_matrix("e(V)"))),st_matrix("e(b)")'+invttail(st_numscalar("e(df_r)"),(100-`level')/200)*sqrt(diagonal(st_matrix("e(V)")))
+			mata: PlotProcessPoinT = st_matrix("e(b)")' - invttail(st_numscalar("e(df_r)"),(100-`level')/200)*sqrt(diagonal(st_matrix("e(V)"))),st_matrix("e(b)")'+invttail(st_numscalar("e(df_r)"),(100-`level')/200)*sqrt(diagonal(st_matrix("e(V)")))
 		}
 	}
 	if "`uniform'"=="uniform"{
@@ -98,11 +109,8 @@ program plotprocess
 	local kplot=wordcount("`namelist'")
 	local reg "`e(xvar)' _cons"
 	local kreg=wordcount("`reg'")
-	if ("`e(cmd)'" == "qrprocess" | "`e(cmd)'"=="mdqr") & "`xtitle'"==""{
-		local xtitle "Quantile"
-	} 
-	else if "`xtitle'"==""{
-		local xtitle "Threshold"
+	if "`xtitle'" == ""{
+		local xtitle "`xtitle_i'"
 	}
 	if "`xtitle'"=="off"{
 		local xtitle 
@@ -159,7 +167,7 @@ program plotprocess
 			}
 			local j=`j'+1
 		}
-		mata: PlotProcessSelecT=rangen(`j',(`nq'-1)*`kreg'+`j',`nq')
+		mata: PlotProcessSelecT = rangen(`j',(`nq'-1)*`kreg'+`j',`nq')
 		mata: st_store((1..`nq')', "`coef'", PlotProcessCoeF[PlotProcessSelecT,1])
 		if "`pointwise'"=="pointwise"{
 			mata: st_store((1..`nq')', ("`pointl'", "`pointu'"), PlotProcessPoinT[PlotProcessSelecT,.])
@@ -218,7 +226,8 @@ program plotprocess
 	if "`compare'"!=""{
 		quietly estimates restore `keep_est'
 	}
+	mata: mata drop PlotProcessCoeF
+	capture mata: mata drop PlotProcessPoinT
+	capture mata: mata drop PlotProcessUniF
+	capture mata: mata drop PlotProcessSelecT
 end	
-		
-
-	
