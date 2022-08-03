@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.0.1  14apr2020}{...}
+{* *! version 1.0.2  03aug2022}{...}
 
 {title:Title}
 
@@ -360,47 +360,45 @@ default is level(95) or as set by {cmd:set level}; see
 {marker examples}{...}
 {title:Examples}
 
-    {hline}
 {pstd}Use the auto dataset{p_end}
-{phang2}{cmd:. sysuse auto}{p_end}
+{phang2}. {stata sysuse auto}{p_end}
 
 {pstd}Median regression{p_end}
-{phang2}{cmd:. qrprocess price weight length foreign}{p_end}
+{phang2}. {stata qrprocess price weight length foreign}{p_end}
 
 {pstd}Replay results{p_end}
-{phang2}{cmd:. qrprocess}
+{phang2}. {stata qrprocess}
 
 {pstd}Estimate .25 quantile regression and estimate the variance with {help qrprocess##Hendricks_Koenker_1992:Hendricks and Koenker (1992)} method and the Bofinger bandwidth{p_end}
-{phang2}{cmd:. qrprocess price weight length foreign, quantile(.25) vce(nid, bofinger)}
+{phang2}. {stata qrprocess price weight length foreign, quantile(.25) vce(nid, bofinger)}
 {p_end}
 
 {pstd}Median regression with bootstrap standard errors{p_end}
-{phang2}{cmd:. qrprocess price weight length foreign, vce(boot)}{p_end}
+{phang2}. {stata qrprocess price weight length foreign, vce(boot)}{p_end}
 
 {pstd}Estimate .25, .50, and .75 quantile regressions with bootstrap standard errors{p_end}
-{phang2}{cmd:. qrprocess price weight length foreign, vce(boot) quantile(0.25 0.5 0.75)}{p_end}
+{phang2}. {stata qrprocess price weight length foreign, vce(boot) quantile(0.25 0.5 0.75)}{p_end}
 
 {pstd}Estimate .9 quantile regression using subsampled bootstrap standard errors with 200 repetitions and a subsize of 50 observations{p_end}
-{phang2}{cmd:. qrprocess price weight length foreign, vce(boot, bm(subsampling) subsize(50) reps(200)) quantile(0.95)}{p_end}
+{phang2}. {stata qrprocess price weight length foreign, vce(boot, bm(subsampling) subsize(50) reps(200)) quantile(0.95)}{p_end}
  
 {pstd}Use the cps91 dataset{p_end}
-{phang2}{cmd:. use http://www.stata.com/data/jwooldridge/eacsap/cps91 }{p_end}
+{phang2}. {stata "use http://www.stata.com/data/jwooldridge/eacsap/cps91"}{p_end}
  
 {pstd}Estimate the discretized quantile regression process for the 0.1,0.02,...,0.9 quantiles, do not print the results{p_end}
-{phang2}{cmd:. qrprocess lwage c.age##c.age i.black i.hispanic educ, quantile(0.1(0.01)0.9) noprint}{p_end}
+{phang2}. {stata qrprocess lwage c.age# #c.age i.black i.hispanic educ, quantile(0.1(0.01)0.9) noprint}{p_end}
 
 {pstd}Plot all the coefficients{p_end}
-{phang2}{cmd:. plotprocess}{p_end}
+{phang2}. {stata plotprocess}{p_end}
 
 {pstd}Estimate the same process, activate functional inference, use the multiplier bootstrap with 500 replications{p_end}
-{phang2}{cmd:. qrprocess lwage c.age##c.age i.black i.hispanic educ, quantile(0.1(0.01)0.9) functional vce(multiplier, reps(500))}{p_end}
+{phang2}. {stata qrprocess lwage c.age# #c.age i.black i.hispanic educ, quantile(0.1(0.01)0.9) functional vce(multiplier, reps(500))}{p_end}
 
 {pstd}Plot the coefficient for education with uniform and pointwise confidence bands{p_end}
-{phang2}{cmd:. plotprocess educ, ytitle("QR coefficent") title("Years of education")}{p_end}
+{phang2}. {stata plotprocess educ, ytitle("QR coefficent") title("Years of education")}{p_end}
  
 {pstd}Estimate the same process with the one-step estimator, {p_end}
-{phang2}{cmd:. qrprocess lwage c.age##c.age i.black i.hispanic educ, method(onestep) quantile(0.1(0.01)0.9)}{p_end}
-	{hline}
+{phang2}. {stata qrprocess lwage c.age# #c.age i.black i.hispanic educ, method(onestep) quantile(0.1(0.01)0.9)}{p_end}
 
 
 {marker results}{...}
@@ -421,6 +419,7 @@ default is level(95) or as set by {cmd:set level}; see
 
 {p2col 5 20 19 2: Macros}{p_end}
 {synopt:{cmd:e(cmd)}}{cmd:qrprocess}{p_end}
+{synopt:{cmd:e(plotprocess)}}inputs for {cmd:plotprocess}{p_end}
 {synopt:{cmd:e(cmdline)}}command as typed{p_end}
 {synopt:{cmd:e(title)}}Quantile Regression{p_end}
 {synopt:{cmd:e(depvar)}}name of dependent variable{p_end}
