@@ -11,6 +11,6 @@ d Support: email mellyblaise@gmail.com
 f qrprocess.ado
 f qrprocess_p.ado
 f plotprocess.ado
-f qrprocess.sthlp
-f qrprocess_postestimation.sthlp
-f plotprocess.sthlp
+f qrprocess.hlp
+f qrprocess_postestimation.hlp
+f plotprocess.hlp
