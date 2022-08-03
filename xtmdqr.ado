@@ -1,10 +1,9 @@
 *xtmdqr: panel data minimum distance quantile regression
-*! version 0.0.1  27.08.2022  Blaise Melly
+*! version 0.0.1  03.08.2022  Blaise Melly
 
 *Ideas: (1) an option to add a linear trend? This is trivial but I am
 *sure that many users will try to add indicator variables for periods...
 
-cap prog drop xtmdqr
 program xtmdqr, eclass byable(recall) sortpreserve
 	version 9.2
 *if the command is used without arguments it shows the previous results
