@@ -1,13 +1,19 @@
-*Version 1.0.1 27apr2020
+*Version 1.0.2 03aug2022
 
 program cdeco_jmp, eclass
 	version 9.2
 	capt findfile lmoremata.mlib
 	if _rc {
       	di as error "-moremata- is required; type {stata ssc install moremata} and restart Stata."
-		exit
+		error 499
 	}
-	syntax varlist [if] [in] [aweight/], Group(varname) [Method(string) Quantiles(numlist >0 <1 sort) NReg(real 100) Reps(integer 100) Level(cilevel) First(real 0.1) Last(real 0.9) noboot noprint noprintdeco noprinttest SCale(varlist) SAVing(string) CONS_test(string) beta(real 0.9995) small(real 0.00001) max_it(real 50) Censoring(varname) Firstc(real 0.1) Secondc(real 0.05) NSteps(integer 3) RIght]
+*check that qrprocess is installed
+	capt findfile qrprocess.ado
+	if _rc {
+      	di as error "-qrprocess- is required; type {net install qrprocess, from("https://raw.githubusercontent.com/bmelly/Stata/main/")}"
+		error 499
+	}
+	syntax varlist [if] [in] [pweight/], Group(varname) [Method(string) Quantiles(numlist >0 <1 sort) NReg(real 100) Reps(integer 100) Level(cilevel) First(real 0.1) Last(real 0.9) noboot noprint noprintdeco noprinttest SCale(varlist) SAVing(string) CONS_test(string) beta(real 0.9995) small(real 0.00001) max_it(real 50) Censoring(varname) Firstc(real 0.1) Secondc(real 0.05) NSteps(integer 3) RIght est_opts(string)]
 	local nreg=round(`nreg')
 	if `nreg'<1{
 		dis as error "The option nreg must be a strictly positive integer."
@@ -37,7 +43,7 @@ program cdeco_jmp, eclass
 		tempvar exp
 		gen `exp'=1
 	}
-	quietly _rmcollright `varlist' [aw=`exp'] if `touse'
+	quietly _rmcollright `varlist' [pw=`exp'] if `touse'
 	local varlist `r(varlist)'
 	if "`method'"=="cox"{
 		quietly sum `dep' if `touse'
@@ -56,7 +62,7 @@ program cdeco_jmp, eclass
 		di in red "The group variable, `group', is not a 0/1 variable"
 		exit
 	}
-	cdeco_int `dep' `varlist' `if' `in' [aweight=`exp'], group(`group') method(`method') quantiles(`quantiles') nreg(`nreg') scale(`scale') beta(`beta') small(`small') max_it(`max_it') censoring(`censoring') firstc(`firstc') secondc(`secondc') nsteps(`nsteps') `right'
+	cdeco_int `dep' `varlist' `if' `in' [pweight=`exp'], group(`group') method(`method') quantiles(`quantiles') nreg(`nreg') scale(`scale') beta(`beta') small(`small') max_it(`max_it') censoring(`censoring') firstc(`firstc') secondc(`secondc') nsteps(`nsteps') `right' est_opts(`est_opts')
 	tempname results coef0 coef1 covariance tot_dif char coef resid miss0 miss1 test_tot test_char test_coef test_resid test_miss0 test_miss1 disto0 disto1 dist0 dist1 distc1 distc2 obs0 obs1 quants constest ref nreg0 nreg1
 	sca `nreg0'=r(nreg0)
 	sca `nreg1'=r(nreg1)
@@ -64,8 +70,8 @@ program cdeco_jmp, eclass
 	local obs=r(obs)
 	sca `obs0'=r(obs0)
 	sca `obs1'=r(obs1)
-	mata: st_matrix("`coef0'",qte_cov_coef0)
-	mata: st_matrix("`coef1'",qte_cov_coef1)
+	mata: st_matrix("`coef0'", qte_cov_coef0)
+	mata: st_matrix("`coef1'", qte_cov_coef1)
 	if "`boot'"==""{
 		if "`cons_test'"=="" | "`constest'"=="0" {
 			mat `constest'=0
@@ -109,7 +115,7 @@ program cdeco_jmp, eclass
 		di in gr "(bootstrapping " _c
 		forvalues i=1/`reps'{
 			bsample
-			cdeco_int `dep' `varlist' `if' `in' [aweight=`exp'], group(`group') method(`method') quantiles(`quantiles') nreg(`nreg') scale(`scale') beta(`beta') small(`small') max_it(`max_it') censoring(`censoring') firstc(`firstc') secondc(`secondc') nsteps(`nsteps') `right'
+			cdeco_int `dep' `varlist' `if' `in' [pweight=`exp'], group(`group') method(`method') quantiles(`quantiles') nreg(`nreg') scale(`scale') beta(`beta') small(`small') max_it(`max_it') censoring(`censoring') firstc(`firstc') secondc(`secondc') nsteps(`nsteps') `right'  est_opts(`est_opts')
 			mata: qte_cov_boot=qte_cov_boot\(qte_cov_obs0,qte_cov_obs1,qte_cov_fitted0,qte_cov_fitted1,qte_cov_counter1,qte_cov_counter2)
 			if round(`i'/`every')==(`i'/`every'){
 				drop _all
@@ -389,7 +395,14 @@ program cdeco_jmp, eclass
 		dis as text _column(5) %17s "Stochastic dominance: QE(tau)<0 for all taus" as text _column(52) "{c |}" _column(54) as result %8.0g (`test_resid'[rowsof(`test_tot'),1]) _column(69) as result %8.0g (`test_resid'[rowsof(`test_tot'),2]) 
 		dis as text "{hline 51}" "{c BT}" "{hline 29}"
 	}
-	ereturn post `results' `covariance', dep(`dep') obs(`obs') esample(`touse')
+	if "`boot'" == "" {
+		ereturn post `results' `covariance', dep(`dep') obs(`obs') esample(`touse')
+		ereturn local vce "bootstrap"
+	}
+	else{
+		ereturn post `results', dep(`dep') obs(`obs') esample(`touse')
+		ereturn local vce "novar"
+	}
 	ereturn matrix total_difference=`tot_dif'
 	ereturn matrix characteristics=`char'
 	ereturn matrix coefficients=`coef'
@@ -403,6 +416,7 @@ program cdeco_jmp, eclass
 	ereturn matrix counterfactual1 =`distc1'
 	ereturn matrix counterfactual2 =`distc2'
 	ereturn local cmd "counterfactual"
+	ereturn local plotdeco "total_difference characteristics coefficients residuals"
 	ereturn scalar obs0=`obs0'
 	ereturn scalar obs1=`obs1'
 	ereturn scalar nreg0=`nreg0'
@@ -534,7 +548,7 @@ mata void test_boot(real matrix qte_cov_boot, real rowvector qte_cov_def, real c
 *Generic function, counterfactual distribution using group==0 to estimate and group==1 to predict
 program cdeco_int, rclas
 	version 9.2
-	syntax varlist [if] [in] [aweight/] , Group(varname) [ Method(string) Quantiles(numlist >0 <1 sort) NReg(real 100) scale(varlist) beta(real 0.9995) small(real 0.00001) max_it(real 50) Censoring(varname) Firstc(real 0.1) Secondc(real 0.05) NSteps(integer 3) right]
+	syntax varlist [if] [in] [pweight/] , Group(varname) [ Method(string) Quantiles(numlist >0 <1 sort) NReg(real 100) scale(varlist) beta(real 0.9995) small(real 0.00001) max_it(real 50) Censoring(varname) Firstc(real 0.1) Secondc(real 0.05) NSteps(integer 3) right est_opts(string)]
 		marksample touse
 		markout `touse' `counterfactual' `group'
 		tempname quants results obs0 obs1 obs nreg0 nreg1
@@ -565,8 +579,20 @@ program cdeco_int, rclas
 		mata: qte_cov_obs0=mm_quantile(st_data(.,"`dep'","`ref'"),st_data(.,"`exp'","`ref'"),qte_cov_quant)'
 		mata: qte_cov_obs1=mm_quantile(st_data(.,"`dep'","`counter'"),st_data(.,"`exp'","`counter'"),qte_cov_quant)'
 		if "`method'"=="qr"{
-			mata: qte_cov_coef0=est_qr("`dep'","`varlist'","`exp'","`ref'","`nreg0'",`beta',`small',`max_it')
-			mata: qte_cov_coef1=est_qr("`dep'","`varlist'","`exp'","`counter'","`nreg1'",`beta',`small',`max_it')
+			local qlow = 0.5/`nreg0'
+			local qhigh = 1-0.5/`nreg0'
+			local qstep = 1/`nreg0'
+			qrprocess `dep' `varlist' if `ref' == 1 [pw=`exp'], vce(novar) qlow(`qlow') qhigh(`qhigh') qstep(`qstep') noprint `est_opts'
+			mata: qte_cov_coef0 = st_matrix("e(quantiles)")' \ st_matrix("e(coefmat)")
+			qrprocess `dep' `varlist' if `ref' == 1 [pw=`exp'], vce(novar) quantile(0.5) noprint `est_opts'
+			mata: qte_cov_coef0 = (0.5\st_matrix("e(coefmat)")), qte_cov_coef0
+			local qlow = 0.5/`nreg0'
+			local qhigh = 1-0.5/`nreg0'
+			local qstep = 1/`nreg0'
+			qrprocess `dep' `varlist' if `counter' == 1 [pw=`exp'], vce(novar) qlow(`qlow') qhigh(`qhigh') qstep(`qstep') noprint `est_opts'
+			mata: qte_cov_coef1 = st_matrix("e(quantiles)")' \ st_matrix("e(coefmat)")
+			qrprocess `dep' `varlist' if `counter' == 1 [pw=`exp'], vce(novar) quantile(0.5) noprint `est_opts'
+			mata: qte_cov_coef1 = (0.5\st_matrix("e(coefmat)")), qte_cov_coef1
 			mata: qte_cov_fitted0=rqpred("`quants'","`varlist'","`exp'","`ref'",qte_cov_coef0[.,2..cols(qte_cov_coef0)])
 			mata: qte_cov_fitted1=rqpred("`quants'","`varlist'","`exp'","`counter'",qte_cov_coef1[.,2..cols(qte_cov_coef1)])
 			mata: qte_cov_counter2=rqpred("`quants'","`varlist'","`exp'","`counter'",(qte_cov_coef1[1,2..cols(qte_cov_coef1)]\(qte_cov_coef1[2..rows(qte_cov_coef1),1]:+qte_cov_coef0[2..rows(qte_cov_coef0),2..cols(qte_cov_coef0)]:-qte_cov_coef0[2..rows(qte_cov_coef0),1])))
@@ -741,7 +767,7 @@ mata real vector rq_fnm(real matrix X, real colvector dep, real colvector weight
 	}
 	y=-y'
 	if(missing(y)>0){
-		stata("qreg "+depo+" "+rego+" [aweight="+weighto+"] if "+touse+" ,quantile("+strofreal(p)+")",1)
+		stata("qreg "+depo+" "+rego+" [pweight="+weighto+"] if "+touse+" ,quantile("+strofreal(p)+")",1)
 		y=st_matrix("e(b)")'
 	}
 	return(y)
