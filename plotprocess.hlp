@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.1.1  24nov2020}{...}
+{* *! version 1.1.2  03aug2022}{...}
 
 {title:Title}
 
@@ -75,7 +75,7 @@ estimated quantile regression or distribution regression coefficients with their
 bands. The display of the results in form of graphs is more informative than
 tabulation when a large number of QR or DR has been estimated. A single call
 of this function will automatically combine the values saved by the last
-call of {it:{help qrprocess}} or {it:{help drprocess}} and produce a graphic that
+call of {help qrprocess} or {help drprocess} and produce a graphic that
 visualizes the coefficients and allows for testing directly hypotheses. Many
 options can be used to customize the figures.
 
