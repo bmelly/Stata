@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.0.0  4mar2010}{...}
+{* *! version 1.0.1  03aug2022}{...}
 {cmd:help cdeco} 
 {hline}
 
@@ -62,8 +62,7 @@ at all estimated quantiles.{p_end}
 
 {synoptline}
 {p 4 6 2}
-{cmd:aweight}s, {cmd:fweight}s, {cmd:iweight}s, and {cmd:pweight}s are
-allowed; see {help weight}.{p_end}
+{cmd:pweight}s are allowed; see {help weight}.{p_end}
 
 
 {title:Description}
@@ -77,7 +76,7 @@ in the sample with {it: group}==0 and the {it:indepvars} distribution in the sam
 {it:group}==1. {cmd:cdeco} also provides
 procedures to make pointwise and uniform inference on the quantile functions and on the quantile
 effect functions (differences between two quantile functions). Both the estimators
-and the inference procedures are described in detail in Chernozhukov, Fernandez-Val and Melly (2008).
+and the inference procedures are described in detail in Chernozhukov, Fernandez-Val and Melly (2013).
 A complete description of the statistical properties of the methods implemented by {cmd:cdeco}
 can be found in this paper.
 
@@ -114,6 +113,9 @@ The second set of null hypotheses is that there are no difference at all. This i
 stronger than the absence of any mean effect. Other null hypotheses of constant QE (but at a different level than 0)
 can be added with the option {opt cons_test(#)}. The null hypthesis that all QEs are equal to the median policy 
 effect is also tested. Finally, both null-hypotheses of first-order stochastic dominance are tested.
+
+{pstd} The results can easily be plotted with the command {help plotdeco}.
+See the {helpb plotdeco##examples:examples}.
 
 
 {title:Options}
@@ -274,9 +276,7 @@ creates a Stata data file ({opt .dta} file) containing bootstrap replicates.
 {phang2}
 {opt every(#)} specifies that results be written to disk every {it:#}th
 replication.  {opt every()} should be specified only in conjunction with 
-{opt saving()} when it takes a long time for each replication.  This
-option will allow recovery of partial results should some other software crash
-your computer.  See {helpb post:[P] postfile}.
+{opt saving()} when it takes a long time for each replication. See {helpb post:[P] postfile}.
 
 {phang2}
 {opt replace} specifies that {it:filename} be overwritten, if it exists.
@@ -297,6 +297,38 @@ and {opt noprinttest}.
 {opt noprintdeco}suppresses the tables containing the decomposition but not the tables containing the tests. 
 
 {opt noprinttest}suppresses the tables containing the tests but not the tables containing the decomposition. 
+
+{marker examples}{...}
+{title:Example}
+
+{pstd}Setup. {p_end}
+{phang2}. {stata webuse nlsw88}{p_end}
+{phang2}. {stata generate lwage=log(wage)}{p_end}
+
+{pstd}Quantile regression estimator, no inference{p_end}
+{phang2}. {stata cdeco lwage tenure ttl_exp grade, group(union) noboot}{p_end}
+
+{pstd}Location shift estimator, no inference{p_end}
+{phang2}. {stata cdeco lwage tenure ttl_exp grade, group(union) noboot method(loc)}{p_end}
+
+{pstd}Location-scale shift estimator, no inference{p_end}
+{phang2}. {stata cdeco lwage tenure ttl_exp grade, group(union) noboot method(locsca) scale(tenure ttl_exp grade)}{p_end}
+
+{pstd}Logit estimator, no inference{p_end}
+{phang2}. {stata cdeco lwage tenure ttl_exp grade, group(union) noboot method(logit)}{p_end}
+
+{pstd}Logit estimator with inference{p_end}
+{phang2}. {stata cdeco lwage tenure ttl_exp grade, group(union) method(logit)}{p_end}
+
+{pstd}Plot the results. The defaut shows one panel for each component with pointwise and uniform confidence bands as well as one panel with all elements of the decomposition.{p_end}
+{phang2}. {stata plotdeco}{p_end}
+{pstd}We can obtain only the overall decomposition (last panel of the defaut figure) by setting {it:namelist} to {cmd:all}.{p_end}
+{phang2}. {stata plotdeco all}{p_end}
+{pstd}We can change the legend and the title with the options {cmd:legend} and {cmd:title}.{p_end}
+{phang2}. {stata plotdeco all, legend(`"order(1 "Observed difference" 2 "Explained" 3 "Unexplained")"') title("My decomposition")}{p_end}
+{pstd}We can plot a single component by setting {it:namelist} to the name of this component.{p_end}
+{phang2}. {stata plotdeco characteristics}{p_end}
+
 
 
 {title:Saved results}
@@ -356,24 +388,27 @@ and the covariates distribution from {it:group}==1 have been used.{p_end}
 
 {title:Version requirements}
 
-{p 4 4 2}This command requires Stata 9.2. In addition the package {cmd:moremata} must be installed. 
-Type {net "describe moremata, from(http://fmwww.bc.edu/repec/bocode/m/)":ssc describe moremata}{txt}
+{p 4 4 2}This command requires Stata 9.2. In addition the package {cmd:moremata} 
+and the command {cmd:qrprocess} must be installed. 
+Type {stata "ssc install moremata"} and
+{stata "net install qrprocess, from("https://raw.githubusercontent.com/bmelly/Stata/main/")"}
+to install these packages.
 
 
 {title:Methods and Formulas}
 
-{p 4 6} See Chernozhukov, Fernandez-Val and Melly (2008).
+{p 4 6} See Chernozhukov, Fernandez-Val and Melly (2013).
 
 
 {title:Reference}
 
 {phang}
-Victor Chernozhukov, Ivan Fernandez-Val and Alfred Galichon (2007): Quantile and Probability Curves without Crossing.
-MIT Department of Economics Working Paper No. 07-15.
+Victor Chernozhukov, Ivan Fernandez-Val and Alfred Galichon (2010): Quantile and Probability Curves without Crossing.
+Econometrica, 78(3), 1093-1125.
 
 {phang}
-Victor Chernozhukov, Ivan Fernandez-Val and Blaise Melly (2008): Inference on cdeco Distributions.
-MIT Department of Economics Working Paper No. 08-16.
+Victor Chernozhukov, Ivan Fernandez-Val and Blaise Melly (2013): Inference on Counterfactual Distributions.
+Econometrica, 81(6), 2205-2268.
 
 {phang}
 Victor Chernozhukov and Han Hong (2002): Three-step Censored Quantile Regression and Extramarital Affairs.
@@ -385,25 +420,26 @@ Roger Koenker and Gilbert Bassett (1978): Regression quantiles. Econometrica, 46
 
 {title:Remarks}
 
-{p 4 4}This is a first and preliminary version. Please feel free to share your comments, reports of bugs and
+{p 4 4}This is a preliminary version. Please feel free to share your comments, reports of bugs and
 propositions for extensions.
 
-{p 4 4}If you use this command in your work, please cite Victor Chernozhukov, Ivan Fernandez-Val and Blaise Melly (2008).
+{p 4 4}If you use this command in your work, please cite Chernozhukov, Ivan Fernandez-Val and Blaise Melly (2013).
 
 
 {title:Disclaimer}
 
-{p 4 4 2}THIS SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESSED 
-OR IMPLIED. THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE PROGRAM IS WITH YOU. 
-SHOULD THE PROGRAM PROVE DEFECTIVE, YOU ASSUME THE COST OF ALL NECESSARY SERVICING, REPAIR OR CORRECTION.
+{p 4 4 2}This software is provided "as is" without warranty of any kind,
+either expressed or implied. The entire risk as to the quality and performance of the program is with you
+should the program prove defective, you assume the cost of all necessary servicing, repair or correction.
 
-{p 4 4 2}IN NO EVENT WILL THE COPYRIGHT HOLDERS OR THEIR EMPLOYERS, OR ANY OTHER PARTY WHO
-MAY MODIFY AND/OR REDISTRIBUTE THIS SOFTWARE, BE LIABLE TO YOU FOR DAMAGES, INCLUDING ANY 
-GENERAL, SPECIAL, INCIDENTAL OR CONSEQUENTIAL DAMAGES ARISING OUT OF THE USE OR INABILITY TO USE THE PROGRAM.
+{p 4 4 2}In no event will the copyright holders or their emploers, or any other party who
+may modify and/or redistribute this software be liable to you for damages, including any
+general, special, incidental or consequential damages arising out of the use or inability to use the program.
 
 
 {title:Authors}
 
 {p 4 6}Victor Chernozhukov, Ivan Fernandez-Val and Blaise Melly{p_end}
-{p 4 6}MIT, Boston University and Brown University{p_end}
-{p 4 6}blaise_melly@brown.edu{p_end}
+{p 4 6}MIT, Boston University and Bern University{p_end}
+{p 4 6}blaise.melly@unibe.ch{p_end}
+
