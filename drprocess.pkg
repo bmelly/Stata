@@ -11,6 +11,6 @@ d Support: email mellyblaise@gmail.com
 f drprocess.ado
 f drprocess_p.ado
 f plotprocess.ado
-f drprocess.sthlp
+f drprocess.hlp
 f drprocess_postestimation.sthlp
-f plotprocess.sthlp
+f plotprocess.hlp
