@@ -1,5 +1,5 @@
 *mdqr: minimum distance quantile regression
-*! version 0.0.4  27.08.2022  Blaise Melly
+*! version 0.0.4  03.08.2022  Blaise Melly
 
 *To do (potentially): (1) parallel processing with the parallel package (or multishell)
 *(2) Covariance between coefficients are different quantiles (multi-variate GMM?)
@@ -19,7 +19,7 @@ program mdqr, eclass byable(recall) sortpreserve
 *check that qrprocess is installed
 	capt findfile qrprocess.ado
 	if _rc {
-      	di as error "-qrprocess- is required; type {net install qrprocess, from("https://sites.google.com/site/mellyblaise/")}"
+      	di as error "-qrprocess- is required; type {net install qrprocess, from("https://raw.githubusercontent.com/bmelly/Stata/main/")}"
 		error 499
 	}
 *if the command is used without arguments it shows the previous results
@@ -53,7 +53,8 @@ program mdqr, eclass byable(recall) sortpreserve
 					local exo `r(varlist)'
 				}
 			}
-			else{ 
+			else if "`exo'" != ""{ 
+				unab exo : `exo'
 				confirm numeric variable `exo'
 			}
 			gettoken away anything : anything, parse("(")
@@ -71,7 +72,7 @@ program mdqr, eclass byable(recall) sortpreserve
 					local endo `r(varlist)'
 				}
 			}
-			else{
+			else if "`endo'" != ""{
 				confirm numeric variable `endo' 
 			}
 			gettoken away anything : anything, parse("=")
@@ -89,7 +90,7 @@ program mdqr, eclass byable(recall) sortpreserve
 					local inst `r(varlist)'
 				}
 			}
-			else {
+			else if "`inst'" != ""{
 				confirm numeric variable `inst' 
 			}
 		}	
@@ -114,8 +115,13 @@ program mdqr, eclass byable(recall) sortpreserve
 		quietly gen `test' = .	
 		if "`exo'" != ""{
 			quietly foreach v of local exo {
-				unopvarlist `v'
-				local v_unfactored `r(varlist)'
+				if `fvops' == 1{
+					unopvarlist `v'
+					local v_unfactored `r(varlist)'
+				} 
+				else {
+					local v_unfactored "`v'"
+				}
 				bysort `touse' `groupvar' (`v_unfactored') : replace `test' = `v_unfactored'[1] == `v_unfactored'[_N] if `touse'
 				su `test'  if `touse', meanonly
 				if r(min) == 0 {
@@ -184,10 +190,21 @@ program mdqr, eclass byable(recall) sortpreserve
 				local est_command "regress"
 			}
 			else if wordcount("`endo'") == wordcount("`inst'") {
-				local est_command "ivregress 2sls"
+				if _caller() < 10 {
+					local est_command "ivreg "
+				}
+				else {
+					local est_command "ivregress 2sls"
+				}
 			}
 			else {
-				local est_command "ivregress gmm"
+				if _caller() < 10 {
+					local est_command "ivreg2 "
+					local est_opts "`est_opts' gmm "
+				}
+				else {
+					local est_command "ivregress gmm "
+				}
 			}
 		}
 *VCE cannot be changed (to make sure that the s.e. are clustered!)
@@ -399,5 +416,8 @@ program mdqr, eclass byable(recall) sortpreserve
 		ereturn local cmdline `"mdqr `0'"'
 		ereturn local title "Minimum distance quantile regression"
 		ereturn local cmd "mdqr"
+		ereturn local plotprocess "e(quantiles) Quantile"
+		cap mata: mata drop mdqr_coef_mat
+		cap mata: mata drop mdqr_var_mat
 	}
 end
