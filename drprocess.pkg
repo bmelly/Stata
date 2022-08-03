@@ -4,7 +4,7 @@ d
 d The Stata command drprocess offers tools for the estimation of
 d and inference on distribution regression models.
 d
-d Distribution-Date: 20200413
+d Distribution-Date: 20220803
 d
 d {bf:Blaise Melly, Bern University}
 d Support: email mellyblaise@gmail.com
