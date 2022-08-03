@@ -140,6 +140,10 @@ program qrprocess, eclass byable(recall) sortpreserve
 			dis as error "The options qlow, qhigh and qstep are interdependent; either all of them or none of them must be specified."
 			error 400
 		}
+		if ("`qlow'"!="" | "`qhigh'"!="" | "`qstep'"!="") & "`quantile'"!=""{
+			dis as error "The options quantile and (qlow, qhigh and qstep) cannot used simultaneously."
+			error 400
+		}
 *default quantiles
 **median if no functional
 		if "`quantile'"=="" & ("`qlow'"=="" | "`qhigh'"=="" | "`qstep'"=="") & "`functional'"==""{
@@ -504,6 +508,8 @@ program qrprocess, eclass byable(recall) sortpreserve
 		ereturn local cmdline `"qrprocess `0'"'
 		ereturn local title "Quantile regression"
 		ereturn local cmd "qrprocess"
+		ereturn local plotprocess "e(quantiles) Quantile"
+		cap mata: mata drop keep_for_boot
 	}
 end
 
