@@ -1,7 +1,6 @@
 *drprocess: distribution regression process
 
 program drprocess, eclass byable(recall) sortpreserve
-*version control (check later that it works with Stata 9.2)
 	version 9.2
 *check that moremata is installed
 	capt findfile lmoremata.mlib
@@ -464,6 +463,7 @@ program drprocess, eclass byable(recall) sortpreserve
 		ereturn local cmdline `"drprocess `0'"'
 		ereturn local title "Distribution regression"
 		ereturn local cmd "drprocess"
+		ereturn local plotprocess "e(thresholds) Threshold"
 	}
 end
 
