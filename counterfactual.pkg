@@ -25,4 +25,6 @@ f cdeco.ado
 f cdeco.hlp
 f cdeco_jmp.ado
 f cdeco_jmp.hlp
+f plotdeco.ado
+f plotdeco.hlp
 f engel.dta
