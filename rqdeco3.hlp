@@ -1,12 +1,12 @@
 {smcl}
-{* 27jan2009}{...}
+{* 04aug2022}{...}
 {cmd:help rqdeco3}
 {hline}
 
 {title:Title}
 
 {p 4 8 2}
-{bf:Decomposition of differences in distributions into 3 components}
+{bf:SUPERSEDED BY CDECO_JMP! Decomposition of differences in distributions into 3 components}
 
 
 {title:Syntax}
@@ -43,6 +43,13 @@
 {title:Description}
 
 {p 4 4 2}
+This command has been superseded by {help cdeco_jmp}. I invite you to install the counterfactual
+package by clicking on 
+{stata `"net install counterfactual, from("https://raw.githubusercontent.com/bmelly/Stata/main/")"'}.
+The {help cdeco_jmp} command is similar but more sophisticated and flexible. Therefore, I will no
+longer improve {cmd:rqdeco3} and suggest using {cmd:cdeco_jmp} instead.
+
+{p 4 4 2}
 {cmd:rqdeco3} decomposes differences in distribution into three components (residuals, median coefficients
 and characteristics) using quantile regression. This decomposition is described in Melly (2005). It is an 
 extension of the Machado and Mata (2005) decomposition. If you are interested in the Machado and Mata (2005)
@@ -73,7 +80,7 @@ is conceptually similar to the Juhn, Murphy and Pierce (1993) decomposition but 
 
 {p 4 4 2}
 This estimator is a special case of the class of estimators covered by Chernozhukov, Fernandez-Val
-and Melly (2009). Therefore, its statistical properties as well as the validity of the bootstrap follow from
+and Melly (2013). Therefore, its statistical properties as well as the validity of the bootstrap follow from
 their results. Note, however, that the reported standard errors are pointwise standard errors and not
 functional confidence bands. See the command {cmd:counterfactual} for uniform confidence bands. 
 
@@ -255,8 +262,8 @@ of the distributions.
 
 {title:References}
 
-{p 4 6} Victor Chernozhukov, Ivan Fernandez-Val and Blaise Melly (2009): 
-Inference on counterfactual distributions. Mimeo.
+{p 4 6} Victor Chernozhukov, Ivan Fernandez-Val and Blaise Melly (2013): Inference on Counterfactual Distributions.
+Econometrica, 81(6), 2205-2268.
 
 {p 4 6} Chinhui Juhn, Kevin M. Murphy and Brooks Pierce (1993):
 Wage Inequality and the Rise in Returns to Skill.
@@ -285,18 +292,18 @@ Labour Economics, 12, 577-590.
 
 {title:Disclaimer}
 
-{p 4 4 2}THIS SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESSED 
-OR IMPLIED. THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE PROGRAM IS WITH YOU. 
-SHOULD THE PROGRAM PROVE DEFECTIVE, YOU ASSUME THE COST OF ALL NECESSARY SERVICING, REPAIR OR CORRECTION.
+{p 4 4 2}This software is provided "as is" without warranty of any kind,
+either expressed or implied. The entire risk as to the quality and performance of the program is with you
+should the program prove defective, you assume the cost of all necessary servicing, repair or correction.
 
-{p 4 4 2}IN NO EVENT WILL THE COPYRIGHT HOLDERS OR THEIR EMPLOYERS, OR ANY OTHER PARTY WHO
-MAY MODIFY AND/OR REDISTRIBUTE THIS SOFTWARE, BE LIABLE TO YOU FOR DAMAGES, INCLUDING ANY 
-GENERAL, SPECIAL, INCIDENTAL OR CONSEQUENTIAL DAMAGES ARISING OUT OF THE USE OR INABILITY TO USE THE PROGRAM.
+{p 4 4 2}In no event will the copyright holders or their emploers, or any other party who
+may modify and/or redistribute this software be liable to you for damages, including any
+general, special, incidental or consequential damages arising out of the use or inability to use the program.
 
 
 {title:Author}
 
 {p 4 6}Blaise Melly{p_end}
-{p 4 6}Brown university, Department of Economics{p_end}
-{p 4 6}blaise_melly@brown.edu{p_end}
+{p 4 6}Bern university, Department of Economics{p_end}
+{p 4 6}blaise.melly@unibe.ch{p_end}
 
