@@ -1,12 +1,12 @@
 {smcl}
-{* 27jan2010}{...}
+{* 04aug2022}{...}
 {cmd:help rqdeco}
 {hline}
 
 {title:Title}
 
 {p 4 8 2}
-{bf:Decomposition of differences in distributions using quantile regression. SUPERSEDED BY CDECO!}
+{bf:SUPERSEDED BY CDECO! Decomposition of differences in distributions using quantile regression.}
 
 
 {title:Syntax}
