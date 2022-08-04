@@ -6,7 +6,7 @@
 {title:Title}
 
 {p 4 8 2}
-{bf:Decomposition of differences in distributions using quantile regression}
+{bf:Decomposition of differences in distributions using quantile regression. SUPERSEDED BY CDECO!}
 
 
 {title:Syntax}
@@ -43,6 +43,13 @@
 {title:Description}
 
 {p 4 4 2}
+This command has been superseded by {help cdeco}. I invite you to install the counterfactual
+package by clicking on 
+{stata `"net install counterfactual, from("https://raw.githubusercontent.com/bmelly/Stata/main/")"'}.
+The {help cdeco} command is similar but more sophisticated and flexible. Therefore, I will no
+longer improve {cmd:rqdeco} and suggest using {cmd:cdeco} instead.
+
+{p 4 4 2}
 {cmd:rqdeco} decomposes differences in distribution using quantile regression. 
 This decomposition is very similar to the Machado and Mata (2005) decomposition.
 It is described in Melly (2006), where it is shown that it is numerically equivalent to the Machado
@@ -76,7 +83,7 @@ mean.
 
 {p 4 4 2}
 A more complete description of the estimator and its statistical properties can be found 
-in Melly (2006) and in Chernozhukov, Fernandez-Val and Melly (2009). The validity of the bootstrap is
+in Melly (2006) and in Chernozhukov, Fernandez-Val and Melly (2013). The validity of the bootstrap is
 shown in this second paper. Note, however, that the reported standard errors are pointwise standard errors and not
 functional confidence bands. See the command {cmd:counterfactual} for uniform confidence bands.
 
@@ -257,8 +264,8 @@ the discrimination increases as we move up on the wage distribution.
 
 {title:References}
 
-{p 4 6} Victor Chernozhukov, Ivan Fernandez-Val and Blaise Melly (2009): 
-Inference on counterfactual distributions. Mimeo.
+{p 4 6} Victor Chernozhukov, Ivan Fernandez-Val and Blaise Melly (2013): Inference on Counterfactual Distributions.
+Econometrica, 81(6), 2205-2268.
 
 {p 4 6} Roger Koenker and Gilbert Bassett (1978): Regression Quantiles. Econometrica 46,
 33-50.
@@ -286,18 +293,18 @@ propositions for extensions are welcome.
 
 {title:Disclaimer}
 
-{p 4 4 2}THIS SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESSED 
-OR IMPLIED. THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE PROGRAM IS WITH YOU. 
-SHOULD THE PROGRAM PROVE DEFECTIVE, YOU ASSUME THE COST OF ALL NECESSARY SERVICING, REPAIR OR CORRECTION.
+{p 4 4 2}This software is provided "as is" without warranty of any kind,
+either expressed or implied. The entire risk as to the quality and performance of the program is with you
+should the program prove defective, you assume the cost of all necessary servicing, repair or correction.
 
-{p 4 4 2}IN NO EVENT WILL THE COPYRIGHT HOLDERS OR THEIR EMPLOYERS, OR ANY OTHER PARTY WHO
-MAY MODIFY AND/OR REDISTRIBUTE THIS SOFTWARE, BE LIABLE TO YOU FOR DAMAGES, INCLUDING ANY 
-GENERAL, SPECIAL, INCIDENTAL OR CONSEQUENTIAL DAMAGES ARISING OUT OF THE USE OR INABILITY TO USE THE PROGRAM.
+{p 4 4 2}In no event will the copyright holders or their emploers, or any other party who
+may modify and/or redistribute this software be liable to you for damages, including any
+general, special, incidental or consequential damages arising out of the use or inability to use the program.
 
 
 {title:Author}
 
 {p 4 6}Blaise Melly{p_end}
-{p 4 6}Brown university, Department of Economics{p_end}
-{p 4 6}blaise_melly@brown.edu{p_end}
+{p 4 6}Bern university, Department of Economics{p_end}
+{p 4 6}blaise.melly@unibe.ch{p_end}
 
