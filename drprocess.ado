@@ -104,26 +104,24 @@ program drprocess, eclass byable(recall) sortpreserve
 		local nodfadjust `r(nodfadjust)'
 	*cleaning of the values at which the dr will be estimated
 		if "`thresholds'"==""{
-			if `ndreg'==-1234 | `ndreg'==1{
-				if "`functional'"=="" | `ndreg'==1{
-					quiet centile `dep' if `touse'
-					mat `quants'=r(c_1)
+			if `ndreg'==-1234 {
+				if "`functional'"=="" {
+					local ndreg = 1
 				}
 				else{
-					local trim=min(15*`k'/`obs',0.3)
-					mata: st_matrix("`quants'",uniqrows(mm_quantile(st_data(.,"`dep'","`touse'"),st_data(.,"`exp'","`touse'"),range(`trim',1-`trim',(1-2*`trim')/99))')')
+					local ndreg = 100
 				}
 			}
-			else if `ndreg'<1{
+			if `ndreg'<1{
 				dis as error "The option ndreg must contain a strictly positive integer."
 				error 400
 			}
 			else if `ndreg'>=`obs'{
-				mata: st_matrix("`quants'",uniqrows(st_data(.,"`dep'","`touse'")))
+				mata: st_matrix("`quants'", uniqrows(st_data(.,"`dep'","`touse'")))
 			}
-			else{
+			else{			
 				local trim=min(15*`k'/`obs',0.3)
-				mata: st_matrix("`quants'",uniqrows(mm_quantile(st_data(.,"`dep'","`touse'"),st_data(.,"`exp'","`touse'"),range(`trim',1-`trim',(1-2*`trim')/(`ndreg'-1)))')')
+				mata: st_matrix("`quants'",uniqrows(mm_quantile(st_data(.,"`dep'","`touse'"),st_data(.,"`exp'","`touse'"),range(`trim',1-`trim',(1-2*`trim')/(`ndreg'-1)))))
 			}
 		}
 		else{

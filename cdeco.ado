@@ -35,7 +35,7 @@ program cdeco, eclass
 		if "`method'"==""{
 			local method "qr"
 		}
-		if "`method'"!="qr" & "`method'"!="logit" & "`method'"!="probit" & "`method'"!="lpm" & "`method'"!="loc" & "`method'"!="locsca" & "`method'"!="cox" & "`method'"!="cqr"{
+		if "`method'"!="qr" & "`method'"!="logit" & "`method'"!="probit" & "`method'"!="lpm" & "`method'"!="cloglog" & "`method'"!="loc" & "`method'"!="locsca" & "`method'"!="cox" & "`method'"!="cqr"{
 			dis as error "The selected method has not been implemented"
 			exit
 		}
@@ -127,22 +127,28 @@ program cdeco, eclass
 			di in gr "(bootstrapping " _c
 			forvalues i=1/`reps'{
 				bsample
-				cdeco_int `dep' `varlist' `if' `in' [pweight=`exp'], group(`group') method(`method') quantiles(`quantiles') nreg(`nreg') scale(`scale') beta(`beta') small(`small') max_it(`max_it') censoring(`censoring') firstc(`firstc') secondc(`secondc') nsteps(`nsteps') `right' est_opts(`est_opts')
-				mata: qte_cov_boot=qte_cov_boot\(qte_cov_obs0,qte_cov_obs1,qte_cov_fitted0,qte_cov_fitted1,qte_cov_counter)
-				if round(`i'/`every')==(`i'/`every'){
-					drop _all
-					mata: st_addobs(rows(qte_cov_boot))
-					mata: idx = st_addvar(st_local("double"), st_tempname(cols(qte_cov_boot)))
-					mata: st_store(.,idx,qte_cov_boot)
-					if `i'==1{	
-						quietly save `saving', `replace'
+				capture cdeco_int `dep' `varlist' `if' `in' [pweight=`exp'], group(`group') method(`method') quantiles(`quantiles') nreg(`nreg') scale(`scale') beta(`beta') small(`small') max_it(`max_it') censoring(`censoring') firstc(`firstc') secondc(`secondc') nsteps(`nsteps') `right' est_opts(`est_opts')
+				if _rc == 0 {
+					mata: qte_cov_boot=qte_cov_boot\(qte_cov_obs0,qte_cov_obs1,qte_cov_fitted0,qte_cov_fitted1,qte_cov_counter)
+					if round(`i'/`every')==(`i'/`every'){
+						drop _all
+						mata: st_addobs(rows(qte_cov_boot))
+						mata: idx = st_addvar(st_local("double"), st_tempname(cols(qte_cov_boot)))
+						mata: st_store(.,idx,qte_cov_boot)
+						if `i'==1{	
+							quietly save `saving', `replace'
+						}
+						else{ 
+							quietly save `saving', replace
+						}
 					}
-					else{ 
-						quietly save `saving', replace
-					}
+					restore, preserve
+					di in gr "." _c
 				}
-				restore, preserve
-				di in gr "." _c
+				else {
+					dis in red "x" _continue
+					local i = `i' -1
+				}
 			}
 			set more `actual_more'
 			di in gr ")"		
@@ -580,26 +586,16 @@ program cdeco_int, rclas
 			mata: qte_cov_fitted1=rqpred("`quants'","`varlist'","`exp'","`counter'",qte_cov_coef1)
 			mata: qte_cov_counter=rqpred("`quants'","`varlist'","`exp'","`counter'",qte_cov_coef0)
 		}
-		if "`method'"=="logit"{
-			mata: qte_cov_coef0=est_logit("`dep'","`varlist'","`exp'","`ref'","`nreg0'")
-			mata: qte_cov_coef1=est_logit("`dep'","`varlist'","`exp'","`counter'","`nreg1'")
-			mata: qte_cov_fitted0=distpred("`quants'","`varlist'","`exp'","`ref'",qte_cov_coef0,1)
-			mata: qte_cov_fitted1=distpred("`quants'","`varlist'","`exp'","`counter'",qte_cov_coef1,1)
-			mata: qte_cov_counter=distpred("`quants'","`varlist'","`exp'","`counter'",qte_cov_coef0,1)
-		}
-		if "`method'"=="probit"{
-			mata: qte_cov_coef0=est_probit("`dep'","`varlist'","`exp'","`ref'","`nreg0'")
-			mata: qte_cov_coef1=est_probit("`dep'","`varlist'","`exp'","`counter'","`nreg1'")
-			mata: qte_cov_fitted0=distpred("`quants'","`varlist'","`exp'","`ref'",qte_cov_coef0,2)
-			mata: qte_cov_fitted1=distpred("`quants'","`varlist'","`exp'","`counter'",qte_cov_coef1,2)
-			mata: qte_cov_counter=distpred("`quants'","`varlist'","`exp'","`counter'",qte_cov_coef0,2)
-		}
-		if "`method'"=="lpm"{
-			mata: qte_cov_coef0=est_lpm("`dep'","`varlist'","`exp'","`ref'","`nreg0'")
-			mata: qte_cov_coef1=est_lpm("`dep'","`varlist'","`exp'","`counter'","`nreg1'")
-			mata: qte_cov_fitted0=distpred("`quants'","`varlist'","`exp'","`ref'",qte_cov_coef0,3)
-			mata: qte_cov_fitted1=distpred("`quants'","`varlist'","`exp'","`counter'",qte_cov_coef1,3)
-			mata: qte_cov_counter=distpred("`quants'","`varlist'","`exp'","`counter'",qte_cov_coef0,3)
+		if "`method'"=="logit" | "`method'"=="probit" | "`method'"=="cloglog" | "`method'"=="lpm"{
+			drprocess `dep' `varlist' if `ref' == 1 [pw=`exp'], vce(novar)  noprint ndreg(`nreg') `est_opts'
+			mata: qte_cov_coef0 = st_matrix("e(thresholds)")' \ st_matrix("e(coefmat)")
+			sca `nreg0' = rowsof(e(thresholds))
+			drprocess `dep' `varlist' if `counter' == 1 [pw=`exp'], vce(novar)  noprint ndreg(`nreg') `est_opts'
+			mata: qte_cov_coef1 = st_matrix("e(thresholds)")' \ st_matrix("e(coefmat)")
+			sca `nreg1' = rowsof(e(thresholds))
+			mata: qte_cov_fitted0=distpred("`quants'","`varlist'","`exp'","`ref'",qte_cov_coef0, "`method'")
+			mata: qte_cov_fitted1=distpred("`quants'","`varlist'","`exp'","`counter'",qte_cov_coef1, "`method'")
+			mata: qte_cov_counter=distpred("`quants'","`varlist'","`exp'","`counter'",qte_cov_coef0, "`method'")
 		}
 		if "`method'"=="loc"{
 			mata: qte_cov_coef0=est_loc("`dep'","`varlist'","`exp'","`ref'","`nreg0'")
@@ -732,7 +728,7 @@ mata real logisticcdf(x) return(1:/(1:+exp(-x)))
 
 *Mata function doing the unconditional estimation using logit, probit or lpm
 version 9.2
-mata real matrix distpred(string scalar quants,string scalar varlist,string scalar weights,string scalar touse,real matrix Coef1,method)
+mata real matrix distpred(string scalar quants,string scalar varlist,string scalar weights,string scalar touse,real matrix Coef1, string scalar method)
 {
 	real colvector Quants, Wei, RQ_deco_ReT
 	real rowvector ys
@@ -743,8 +739,9 @@ mata real matrix distpred(string scalar quants,string scalar varlist,string scal
 	ys=Coef1[1,.]
 	Coef=Coef1[2..rows(Coef1),1..(cols(Coef1)-1)]
 	Pred=cross(Reg'\J(1,rows(Reg),1),Coef)
-	if(method==1) Pred=logisticcdf(Pred)
-	if(method==2) Pred=normal(Pred)
+	if(method== "logit") Pred=logisticcdf(Pred)
+	if(method== "probit") Pred=normal(Pred)
+	if( method == "cloglog") Pred = 1 :- exp(-exp(Pred))
 	Pred=mean(Pred,Wei)'\1
 	Pred=rearrange(Pred)
 	RQ_deco_ReT=getquantile(ys',Pred,Quants)
@@ -861,106 +858,6 @@ mata real rowvector bound(real rowvector x, real rowvector dx)
 	f=select(1..length(x),dx:<0)
 	b[f] = -x[f] :/ dx[f]
 	return(b)
-}
-
-*Mata function doing the conditional estimation using logit
-version 9.2
-mata real matrix est_logit(string scalar dep1, string scalar reg1, string scalar wei1, string scalar touse, string scalar nreg1)
-{
-	real colvector dep, wei, depeval, idx
-	real matrix reg, coef
-	real scalar nreg, i, level
-	dep=st_data(.,dep1,touse)
-	reg=st_data(.,tokens(reg1),touse)
-	reg=reg,J(rows(reg),1,1)
-	wei=st_data(.,wei1,touse)
-	nreg=st_numscalar(nreg1)
-	if(nreg<.){
-		depeval=uniqrows(mm_quantile(dep,wei,(1..nreg):/nreg:-0.5/nreg)')
-	}
-	else{
-		depeval=uniqrows(dep)
-	}
-	nreg=rows(depeval)
-	st_numscalar(nreg1,nreg)
-	coef=J(cols(reg)+1,0,.)
-	idx = st_addvar("double", st_tempname())
-	for (i=1; i<=nreg; i++) {
-		level=depeval[i]
-		st_store(.,idx,touse,dep:<=level)
-		stata("logit "+st_varname(idx)+" "+reg1+" [pweight="+wei1+"] if "+touse+"==1, asis",1)
-		coef=coef,(level\st_matrix("e(b)")')
-	}
-	coef=coef[.,select(1..nreg,colmissing(coef):==0)]
-	coef=coef,(max(dep)\J(cols(reg),1,.))
-	return(coef)
-}
-
-*Mata function doing the conditional estimation using probit
-version 9.2
-mata real matrix est_probit(string scalar dep1, string scalar reg1, string scalar wei1, string scalar touse, string scalar nreg1)
-{
-	real colvector dep, wei, depeval, idx
-	real matrix reg, coef
-	real scalar nreg, i, level
-	dep=st_data(.,dep1,touse)
-	reg=st_data(.,tokens(reg1),touse)
-	reg=reg,J(rows(reg),1,1)
-	wei=st_data(.,wei1,touse)
-	nreg=st_numscalar(nreg1)
-	if(nreg<.){
-		depeval=uniqrows(mm_quantile(dep,wei,(1..nreg):/nreg:-0.5/nreg)')
-	}
-	else{
-		depeval=uniqrows(dep)
-	}
-	if(max(dep)==max(depeval)){		
-		nreg=rows(depeval)-1	
-	} 
-	else nreg=rows(depeval)
-	st_numscalar(nreg1,nreg)
-	coef=J(cols(reg)+1,0,.)
-	idx = st_addvar("double", st_tempname())
-	for (i=1; i<=nreg; i++) {
-		level=depeval[i]
-		st_store(.,idx,touse,dep:<=level)
-		stata("probit "+st_varname(idx)+" "+reg1+" [iweight="+wei1+"] if "+touse+"==1, asis",1)
-		coef=coef,(level\st_matrix("e(b)")')
-	}
-	coef=coef,(max(dep)\J(cols(reg),1,.))
-	return(coef)
-}
-
-*Mata function doing the conditional estimation using linear probability model
-version 9.2
-mata real matrix est_lpm(string scalar dep1, string scalar reg1, string scalar wei1, string scalar touse, string scalar nreg1)
-{
-	real colvector dep, wei, depeval, idx
-	real matrix reg, coef
-	real scalar nreg, i, level
-	dep=st_data(.,dep1,touse)
-	reg=st_data(.,tokens(reg1),touse)
-	reg=reg,J(rows(reg),1,1)
-	wei=st_data(.,wei1,touse)
-	nreg=st_numscalar(nreg1)
-	if(nreg<.){
-		depeval=uniqrows(mm_quantile(dep,wei,(1..nreg):/nreg:-0.5/nreg)')
-	}
-	else{
-		depeval=uniqrows(dep)
-	}
-	if(max(dep)==max(depeval)){		
-		nreg=rows(depeval)-1	
-	} 
-	else nreg=rows(depeval)
-	st_numscalar(nreg1,nreg)
-	coef=J(cols(reg)+1,0,.)
-	for (i=1; i<=nreg; i++) {
-		level=depeval[i]
-		coef=coef,(level\invsym(cross(reg,wei,reg))*cross(reg,wei,dep:<=level))
-	}
-	coef=coef,(max(dep)\J(cols(reg),1,.))
-	return(coef)
 }
 
 *Mata function doing the conditional estimation using location model
@@ -1081,27 +978,5 @@ mata real matrix est_cqrl(real colvector y, real colvector c, real matrix x, rea
 		coef[.,i]=temp
 	}
 	coef=quants'\coef
-	return(coef)
-}
-
-*Mata function doing the logit estimation
-version 9.2
-mata real matrix logit(real colvector dep, real matrix reg, real colvector wei)
-{
-	transmorphic S
-	real scalar ret
-	real colvector coef
-	S = optimize_init()
-	optimize_init_evaluator(S, &lnwlogit())
-	optimize_init_evaluatortype(S, "v2")
-	optimize_init_conv_maxiter(S, 200)
-	optimize_init_verbose(S, 0)
-	optimize_init_tracelevel(S, "none")
-	optimize_init_params(S,(invsym((reg:*wei)'reg)*(reg:*wei)'dep)')
-	optimize_init_argument(S, 1, reg)
-	optimize_init_argument(S, 2, dep)
-	optimize_init_argument(S, 3, wei)
-	ret = _optimize(S)
-	coef=optimize_result_params(S)'
 	return(coef)
 }

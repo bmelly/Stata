@@ -370,11 +370,9 @@ default is level(95) or as set by {cmd:set level}; see
 
 {p2col 5 20 19 2: Matrices}{p_end}
 {p2col 5 20 19 2: let {it:k} be the number of regressors and {it:nq} be the number of quantile regressions}{p_end}
-{synopt:{cmd:e(quantiles)}}estimated quantile(s); {it:nq}*1 vector{p_end}
+{synopt:{cmd:e(thresholds)}}estimated quantile(s); {it:nq}*1 vector{p_end}
 {synopt:{cmd:e(b)}}coefficient vector; ({it:k}*{it:nq})*1 vector{p_end}
 {synopt:{cmd:e(V)}}variance-covariance matrix of the estimators; ({it:k}*{it:nq})*({it:k}*{it:nq}) matrix{p_end}
-{synopt:{cmd:e(sum_rdev)}}sum of absolute deviations; {it:nq}*1 vector{p_end}
-{synopt:{cmd:e(sum_mdev)}}sum of raw deviations; {it:nq}*1 vector{p_end}
 {synopt:{cmd:e(coefmat)}}matrix of coefficients; ({it:k}*{it:nq}) matrix{p_end}
 {synopt:{cmd:e(pointwise)}}lower and upper bounds of the pointwise confidence intervals; ({it:k}*{it:nq})*2 matrix{p_end}
 {synopt:{cmd:e(uniform)}}lower and upper bounds of the functional confidence bands; ({it:k}*{it:nq})*2 matrix{p_end}
