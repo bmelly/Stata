@@ -409,6 +409,8 @@ end
 version 9.2
 mata void ev_boot(real matrix qte_cov_booti, qte_cov_obs0, qte_cov_obs1, qte_cov_def0, real rowvector qte_cov_def1, real rowvector qte_cov_defc, real colvector qte_cov_quant, string scalar contest, real scalar max, real scalar min, real scalar level, string scalar results, string scalar covariance, string scalar tot_dif, string scalar char, string scalar coef, string scalar miss0, string scalar miss1, string scalar test_tot, string scalar test_char, string scalar test_coef, string scalar test_miss0, string scalar test_miss1, string scalar disto0, string scalar disto1, string scalar dist0, string scalar dist1, string scalar distc)
 {
+	real matrix qte_cov_boot_o0, qte_cov_boot_o1, qte_cov_boot_0, qte_cov_boot_1, qte_cov_boot_c, constest
+	real scalar nq, a
 	nq=rows(qte_cov_quant)
 	qte_cov_boot_o0=qte_cov_booti[.,1..nq]
 	qte_cov_boot_o1=qte_cov_booti[.,(1..nq):+nq]
@@ -432,6 +434,10 @@ mata void ev_boot(real matrix qte_cov_booti, qte_cov_obs0, qte_cov_obs1, qte_cov
 
 mata void test_boot(real matrix qte_cov_boot, real rowvector qte_cov_def, real colvector qte_cov_quant, real matrix constest, real scalar max, real scalar min, real scalar level, string scalar results, string scalar tests)
 {
+	real colvector	Vuqf, sel, Kmaxuqf, seuqf, Kmeanuqf
+	real rowvector lb, ub, qte_cov_def1
+	real matrix Kuqf, qte_cov_boot1
+	real scalar Kalpha, KSstat, test, i, CMSstat, median, nc
 	Vuqf=diagonal(variance(qte_cov_boot))'
 	Kuqf=((qte_cov_boot-qte_cov_def#J(rows(qte_cov_boot),1,1)):^2:/(Vuqf#J(rows(qte_cov_boot),1,1))):^0.5
 	sel=(sum(qte_cov_quant:<min)+1)..sum(qte_cov_quant:<=max)
@@ -629,8 +635,11 @@ end
 
 *Mata function doing the unconditional estimation using cox
 version 9.2
-mata real matrix coxpred(string scalar quants, string scalar varlist, string scalar weights, string scalar touse, real matrix Coef1)
+mata real rowvector coxpred(string scalar quants, string scalar varlist, string scalar weights, string scalar touse, real matrix Coef1)
 {
+	real matrix Reg, Sc
+	real colvector Quants, Wei, beta, t, S0, index
+	real rowvector F, RQ_deco_ReT
 	Quants=st_matrix(quants)
 	Reg=st_data(.,tokens(varlist),touse)
 	Wei=st_data(.,weights,touse)
@@ -644,10 +653,14 @@ mata real matrix coxpred(string scalar quants, string scalar varlist, string sca
 	RQ_deco_ReT=mm_quantile(t,F'-(0\F[1..(length(F)-1)]'),Quants)'
 	return(RQ_deco_ReT)
 }
+
 *Mata function doing the unconditional estimation using locsca
 version 9.2
-mata real matrix lspred(string scalar quants, string scalar varlist, string scalar scale1, string scalar weights, string scalar touse, real matrix Coef1)
+mata real rowvector lspred(string scalar quants, string scalar varlist, string scalar scale1, string scalar weights, string scalar touse, real matrix Coef1)
 {
+	real matrix Reg, scale
+	real colvector Quants, Wei, beta, betas, resid, pred, predsca
+	real rowvector RQ_deco_ReT
 	Quants=st_matrix(quants)
 	Reg=st_data(.,tokens(varlist),touse)
 	Reg=Reg,J(rows(Reg),1,1)
@@ -666,6 +679,7 @@ mata real matrix lspred(string scalar quants, string scalar varlist, string scal
 
 * Clean Distribution Function                                                       
 mata real cleandist(real matrix v){
+	real scalar n, m, i, j
 	n = rows(v)
 	m=cols(v)
 	for( i=1 ; i<=n ; i++ ){
@@ -683,6 +697,8 @@ mata real cleandist(real matrix v){
 
 * Rearrangement (due to Chernozhukov et al), alternative for insertionsort function 
 mata real rearrange(real colvector v){
+	real scalar n, i
+	real colvector F, vs
 	n = rows(v)
 	F = J(n,1,0)
 	vs = J(n,1,0)
@@ -699,10 +715,12 @@ mata:
 real getquantile(real colvector y, real colvector F, real colvector TAU_)
 {
 	real colvector Q
+	real scalar NumRows, NumTau, i
 	NumRows = rows(y)
 	NumTau = rows(TAU_)
+	Q = J(NumTau, 1, 0)
 	for( i=1 ; i<=NumTau ; i++ ){
-		Q = Q \ y[min((colsum( F :<= TAU_[i] )+1,NumRows))]
+		Q[i, 1] = y[min((colsum( F :<= TAU_[i] )+1,NumRows))]
 	}
 	return(Q)
 }
@@ -716,6 +734,9 @@ mata real logisticcdf(x) return(1:/(1:+exp(-x)))
 version 9.2
 mata real matrix distpred(string scalar quants,string scalar varlist,string scalar weights,string scalar touse,real matrix Coef1,method)
 {
+	real colvector Quants, Wei, RQ_deco_ReT
+	real rowvector ys
+	real matrix Reg, Coef, Pred
 	Quants=st_matrix(quants)
 	Reg=st_data(.,tokens(varlist),touse)
 	Wei=st_data(.,weights,touse)
@@ -724,7 +745,6 @@ mata real matrix distpred(string scalar quants,string scalar varlist,string scal
 	Pred=cross(Reg'\J(1,rows(Reg),1),Coef)
 	if(method==1) Pred=logisticcdf(Pred)
 	if(method==2) Pred=normal(Pred)
-//	if(method==3) Pred=cleandist(Pred)
 	Pred=mean(Pred,Wei)'\1
 	Pred=rearrange(Pred)
 	RQ_deco_ReT=getquantile(ys',Pred,Quants)
@@ -735,6 +755,9 @@ mata real matrix distpred(string scalar quants,string scalar varlist,string scal
 version 9.2
 mata real matrix rqpred(string scalar quants, string scalar varlist, string scalar weights, string scalar touse, real matrix Coef1)
 {
+	real colvector Quants, Wei, RQ_deco_ReT
+	real rowvector wq
+	real matrix Reg, Coef, Pred
 	Quants=st_matrix(quants)
 	Reg=st_data(.,tokens(varlist),touse)
 	Wei=st_data(.,weights,touse)
@@ -750,6 +773,10 @@ mata real matrix rqpred(string scalar quants, string scalar varlist, string scal
 *interior QR
 mata real vector rq_fnm(real matrix X, real colvector dep, real colvector weight, real scalar p, real scalar beta, real scalar small, real scalar max_it, string scalar depo, string scalar rego, string scalar weighto, string scalar touse)
 {
+	real scalar n, gap, it, mu, g
+	real colvector u, a, c, b, x, s, y, r, z, w, q, rhs, dy, dx, ds, dz, dw, fx, fs, fp, dxdz, dsdw, xinv, sinv, xi
+	real rowvector fw, fz, fd
+	real matrix A, AQ
 	weight=weight:/mean(weight)
 	n=rows(X)
 	u=J(n,1,1)
@@ -827,18 +854,22 @@ mata real vector rq_fnm(real matrix X, real colvector dep, real colvector weight
 }
 
 *internal function for interior QR
-mata real vector bound(real vector x, real vector dx)
+mata real rowvector bound(real rowvector x, real rowvector dx)
 {
+	real rowvector b, f
 	b = J(1,length(x),1e20)
 	f=select(1..length(x),dx:<0)
 	b[f] = -x[f] :/ dx[f]
 	return(b)
 }
 
-*Mata function doing the conditional estimation using probit
+*Mata function doing the conditional estimation using logit
 version 9.2
 mata real matrix est_logit(string scalar dep1, string scalar reg1, string scalar wei1, string scalar touse, string scalar nreg1)
 {
+	real colvector dep, wei, depeval, idx
+	real matrix reg, coef
+	real scalar nreg, i, level
 	dep=st_data(.,dep1,touse)
 	reg=st_data(.,tokens(reg1),touse)
 	reg=reg,J(rows(reg),1,1)
@@ -869,6 +900,9 @@ mata real matrix est_logit(string scalar dep1, string scalar reg1, string scalar
 version 9.2
 mata real matrix est_probit(string scalar dep1, string scalar reg1, string scalar wei1, string scalar touse, string scalar nreg1)
 {
+	real colvector dep, wei, depeval, idx
+	real matrix reg, coef
+	real scalar nreg, i, level
 	dep=st_data(.,dep1,touse)
 	reg=st_data(.,tokens(reg1),touse)
 	reg=reg,J(rows(reg),1,1)
@@ -901,6 +935,9 @@ mata real matrix est_probit(string scalar dep1, string scalar reg1, string scala
 version 9.2
 mata real matrix est_lpm(string scalar dep1, string scalar reg1, string scalar wei1, string scalar touse, string scalar nreg1)
 {
+	real colvector dep, wei, depeval, idx
+	real matrix reg, coef
+	real scalar nreg, i, level
 	dep=st_data(.,dep1,touse)
 	reg=st_data(.,tokens(reg1),touse)
 	reg=reg,J(rows(reg),1,1)
@@ -930,6 +967,9 @@ mata real matrix est_lpm(string scalar dep1, string scalar reg1, string scalar w
 version 9.2
 mata real matrix est_loc(string scalar dep1, string scalar reg1, string scalar wei1, string scalar touse, string scalar nreg1)
 {
+	real colvector dep, wei, beta, resid
+	real matrix reg, coef
+	real scalar nreg
 	dep=st_data(.,dep1,touse)
 	reg=st_data(.,tokens(reg1),touse)
 	reg=reg,J(rows(reg),1,1)
@@ -948,6 +988,9 @@ mata real matrix est_loc(string scalar dep1, string scalar reg1, string scalar w
 version 9.2
 mata real matrix est_locsca(string scalar dep1, string scalar reg1, string scalar scale1, string scalar wei1, string scalar touse, string scalar nreg1)
 {
+	real colvector dep, wei, beta, resid, scale, betas, predsca
+	real matrix reg, coef
+	real scalar nreg
 	dep=st_data(.,dep1,touse)
 	reg=st_data(.,tokens(reg1),touse)
 	reg=reg,J(rows(reg),1,1)
@@ -968,6 +1011,8 @@ mata real matrix est_locsca(string scalar dep1, string scalar reg1, string scala
 version 9.2
 mata real matrix est_cox(string scalar dep1, string scalar reg1, string scalar wei1, string scalar touse)
 {
+	transmorphic colvector S0
+	real colvector coef, t
 	stata("preserve",1)
 	stata("sort "+dep1,1)
 	stata("stset "+dep1+" [pweight="+wei1+"]",1)
@@ -975,7 +1020,7 @@ mata real matrix est_cox(string scalar dep1, string scalar reg1, string scalar w
 	stata("stcox "+reg1+" if "+touse+" , basesurv("+S0+")",1)
 	coef=st_matrix("e(b)")'
 	t=st_data(.,"_t",touse)
-	S0=st_data(.,S0,touse)
+	S0 = st_data(.,S0,touse)
 	stata("stset, clear",1)
 	stata("restore",1)
 	coef=(coef,J(rows(coef),1,.))\(t,S0)
@@ -985,6 +1030,9 @@ mata real matrix est_cox(string scalar dep1, string scalar reg1, string scalar w
 *Mata function doing the conditional estimation using cqr
 mata real matrix est_cqr(string scalar dep, string scalar censoring, string scalar reg, string scalar weight, string scalar touse, string scalar nquant1, real scalar firstc, real scalar secondc, real scalar nsteps, real scalar right, real scalar beta, real scalar small, real scalar max_it)
 {
+	real scalar nquant 
+	real colvector c, y, w, quants
+	real matrix x, coef
 	nquant=st_numscalar(nquant1)
 	c=st_data(.,censoring,touse)
 	y=st_data(.,dep,touse)
@@ -1004,6 +1052,10 @@ mata real matrix est_cqr(string scalar dep, string scalar censoring, string scal
 
 mata real matrix est_cqrl(real colvector y, real colvector c, real matrix x, real colvector w, real colvector quants, real scalar c1, real scalar c2, real scalar nsteps, real scalar beta, real scalar small, real scalar max_it, string scalar dep, string scalar reg, string scalar weight, string scalar touse)
 {
+	real matrix coef
+	real colvector ncensored, temp, pred, select1, pred1, select2
+	real rowvector idx 
+	real scalar nq, i, delta1, step, delta2
 	coef=J(cols(x),rows(quants),.)
 	ncensored=(y:>c)
 	idx = st_addvar("double", st_tempname())
@@ -1036,6 +1088,9 @@ mata real matrix est_cqrl(real colvector y, real colvector c, real matrix x, rea
 version 9.2
 mata real matrix logit(real colvector dep, real matrix reg, real colvector wei)
 {
+	transmorphic S
+	real scalar ret
+	real colvector coef
 	S = optimize_init()
 	optimize_init_evaluator(S, &lnwlogit())
 	optimize_init_evaluatortype(S, "v2")
