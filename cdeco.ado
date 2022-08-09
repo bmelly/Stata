@@ -26,7 +26,16 @@ program cdeco, eclass
 		ereturn display, level(`level')
  	}
 	else {
-		syntax varlist [if] [in] [pweight/], Group(varname) [Method(string) Quantiles(numlist >0 <1 sort) NReg(real 100) Reps(integer 100) Level(cilevel) First(real 0.1) Last(real 0.9) noboot noprint noprintdeco noprinttest SCale(varlist) SAVing(string) CONS_test(string) beta(real 0.9995) small(real 0.00001) max_it(real 50) Censoring(varname) Firstc(real 0.1) Secondc(real 0.05) NSteps(integer 3) RIght est_opts(string)]
+		if _caller() >= 11{
+			version 11.1: syntax varlist(numeric fv) [if] [in] [pweight/], Group(varname) [Method(string) Quantiles(numlist >0 <1 sort) NReg(real 100) Reps(integer 100) Level(cilevel) First(real 0.1) Last(real 0.9) noboot noprint noprintdeco noprinttest SCale(varlist) SAVing(string) CONS_test(string) beta(real 0.9995) small(real 0.00001) max_it(real 50) Censoring(varname) Firstc(real 0.1) Secondc(real 0.05) NSteps(integer 3) RIght est_opts(string)]
+		}
+		else{
+			syntax varlist [if] [in] [pweight/], Group(varname) [Method(string) Quantiles(numlist >0 <1 sort) NReg(real 100) Reps(integer 100) Level(cilevel) First(real 0.1) Last(real 0.9) noboot noprint noprintdeco noprinttest SCale(varlist) SAVing(string) CONS_test(string) beta(real 0.9995) small(real 0.00001) max_it(real 50) Censoring(varname) Firstc(real 0.1) Secondc(real 0.05) NSteps(integer 3) RIght est_opts(string)]
+		}
+		local fvops = "`s(fvops)'" == "true" & _caller() >= 11
+		if `fvops' {
+			local vv: di "version " string(max(11,_caller())) ", missing: " 
+		}
 		local nreg=round(`nreg')
 		if `nreg'<1{
 			dis as error "The option nreg must be a strictly positive integer."
@@ -56,7 +65,7 @@ program cdeco, eclass
 			tempvar exp
 			quie gen `exp' = 1 if `touse'
 		}
-		quietly _rmcollright `varlist' [pw=`exp'] if `touse'
+		`vv' quietly _rmcollright `varlist' [pw=`exp'] if `touse'
 		local varlist `r(varlist)'
 		if "`method'"=="cox"{
 			quietly sum `dep' if `touse'
@@ -75,7 +84,7 @@ program cdeco, eclass
 			di in red "The group variable, `group', is not a 0/1 variable"
 			exit
 		}
-		cdeco_int `dep' `varlist' if `touse' [pweight=`exp'], group(`group') method(`method') quantiles(`quantiles') nreg(`nreg') scale(`scale') beta(`beta') small(`small') max_it(`max_it') censoring(`censoring') firstc(`firstc') secondc(`secondc') nsteps(`nsteps') `right' est_opts(`est_opts')
+		`vv' cdeco_int `dep' `varlist' if `touse' [pweight=`exp'], group(`group') method(`method') quantiles(`quantiles') nreg(`nreg') scale(`scale') beta(`beta') small(`small') max_it(`max_it') censoring(`censoring') firstc(`firstc') secondc(`secondc') nsteps(`nsteps') `right' est_opts(`est_opts')
 		tempname results coef0 coef1 covariance tot_dif char coef miss0 miss1 test_tot test_char test_coef test_miss0 test_miss1 disto0 disto1 dist0 dist1 distc obs0 obs1 quants constest ref nreg0 nreg1
 		sca `nreg0' = r(nreg0)
 		sca `nreg1' = r(nreg1)
@@ -127,7 +136,7 @@ program cdeco, eclass
 			di in gr "(bootstrapping " _c
 			forvalues i=1/`reps'{
 				bsample
-				capture cdeco_int `dep' `varlist' `if' `in' [pweight=`exp'], group(`group') method(`method') quantiles(`quantiles') nreg(`nreg') scale(`scale') beta(`beta') small(`small') max_it(`max_it') censoring(`censoring') firstc(`firstc') secondc(`secondc') nsteps(`nsteps') `right' est_opts(`est_opts')
+				capture `vv' cdeco_int `dep' `varlist' `if' `in' [pweight=`exp'], group(`group') method(`method') quantiles(`quantiles') nreg(`nreg') scale(`scale') beta(`beta') small(`small') max_it(`max_it') censoring(`censoring') firstc(`firstc') secondc(`secondc') nsteps(`nsteps') `right' est_opts(`est_opts')
 				if _rc == 0 {
 					mata: qte_cov_boot=qte_cov_boot\(qte_cov_obs0,qte_cov_obs1,qte_cov_fitted0,qte_cov_fitted1,qte_cov_counter)
 					if round(`i'/`every')==(`i'/`every'){
@@ -147,7 +156,6 @@ program cdeco, eclass
 				}
 				else {
 					dis in red "x" _continue
-					local i = `i' -1
 				}
 			}
 			set more `actual_more'
@@ -528,105 +536,128 @@ mata void test_boot(real matrix qte_cov_boot, real rowvector qte_cov_def, real c
 *Generic function, counterfactual distribution using group==0 to estimate and group==1 to predict
 program cdeco_int, rclas
 	version 9.2
-	syntax varlist [if] [pweight/] , Group(varname) [ Method(string) Quantiles(numlist >0 <1 sort) NReg(real 100) scale(varlist) beta(real 0.9995) small(real 0.00001) max_it(real 50) Censoring(varname) Firstc(real 0.1) Secondc(real 0.05) NSteps(integer 3) right  est_opts(string)]
-		marksample touse
-		markout `touse' `group'
-		tempname quants results obs0 obs1 obs nreg0 nreg1
-		if "`quantiles'"==""{
-			local quantiles "0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9"
-		}
-		tokenize "`quantiles'", parse(" ")
-		local i=1
-		while "`1'" != "" {
-			matrix `quants'= nullmat(`quants') \ (`1')
-			mac shift 
-			local i=`i'+1
-		}
-		gettoken dep varlist : varlist
-		tempvar ref counter 
-		sca `nreg0'=`nreg'
-		sca `nreg1'=`nreg'
-		quietly gen `ref'=`touse'
-		quietly replace `ref' = 0 if `group'==1
-		quietly gen `counter' = `touse'
-		quietly replace `counter' = 0 if `group'==0
-		quietly sum `ref'
-		sca `obs0'=r(sum)
-		quietly sum `counter'
-		sca `obs1'=r(sum)
-		sca `obs'=`obs0'+`obs1'
-		mata: qte_cov_quant = st_matrix("`quants'")
-		mata: qte_cov_obs0 = mm_quantile(st_data(.,"`dep'","`ref'"), st_data(.,"`exp'","`ref'"), qte_cov_quant)'
-		mata: qte_cov_obs1 = mm_quantile(st_data(.,"`dep'","`counter'"), st_data(.,"`exp'","`counter'"), qte_cov_quant)'
-		if "`method'" == "qr"{
-			local qlow = 0.5/`nreg0'
-			local qhigh = 1-0.5/`nreg0'
-			local qstep = 1/`nreg0'
-			qrprocess `dep' `varlist' if `ref' == 1 [pw=`exp'], vce(novar) qlow(`qlow') qhigh(`qhigh') qstep(`qstep') noprint `est_opts'
-			mata: qte_cov_coef0 = st_matrix("e(quantiles)")' \ st_matrix("e(coefmat)")
-			local qlow = 0.5/`nreg1'
-			local qhigh = 1-0.5/`nreg1'
-			local qstep = 1/`nreg1'
-			qrprocess `dep' `varlist' if `counter' == 1 [pw=`exp'], vce(novar) qlow(`qlow') qhigh(`qhigh') qstep(`qstep') noprint `est_opts'
-			mata: qte_cov_coef1 = st_matrix("e(quantiles)")' \ st_matrix("e(coefmat)")
-			mata: qte_cov_fitted0 = rqpred("`quants'","`varlist'","`exp'","`ref'",qte_cov_coef0)
-			mata: qte_cov_fitted1 = rqpred("`quants'","`varlist'","`exp'","`counter'",qte_cov_coef1)
-			mata: qte_cov_counter = rqpred("`quants'","`varlist'","`exp'","`counter'",qte_cov_coef0)
-		}
-		if "`method'"=="cqr"{
-			if "`right'"==""{	
-				local right=0
+	if _caller() >= 11{
+		version 11.1: syntax varlist(numeric fv) [if] [pweight/] , Group(varname) [ Method(string) Quantiles(numlist >0 <1 sort) NReg(real 100) scale(varlist) beta(real 0.9995) small(real 0.00001) max_it(real 50) Censoring(varname) Firstc(real 0.1) Secondc(real 0.05) NSteps(integer 3) right  est_opts(string)]
+	}
+	else{
+		syntax varlist [if] [pweight/] , Group(varname) [ Method(string) Quantiles(numlist >0 <1 sort) NReg(real 100) scale(varlist) beta(real 0.9995) small(real 0.00001) max_it(real 50) Censoring(varname) Firstc(real 0.1) Secondc(real 0.05) NSteps(integer 3) right  est_opts(string)]
+	}
+	local fvops = "`s(fvops)'" == "true" & _caller() >= 11
+	if `fvops' {
+		local vv: di "version " string(max(11,_caller())) ", missing: " 
+	}
+	marksample touse
+	markout `touse' `group'
+	tempname quants results obs0 obs1 obs nreg0 nreg1
+	if "`quantiles'"==""{
+		local quantiles "0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9"
+	}
+	tokenize "`quantiles'", parse(" ")
+	local i=1
+	while "`1'" != "" {
+		matrix `quants'= nullmat(`quants') \ (`1')
+		mac shift 
+		local i=`i'+1
+	}
+	gettoken dep varlist : varlist
+	tempvar ref counter 
+	sca `nreg0'=`nreg'
+	sca `nreg1'=`nreg'
+	*deal with factor variables when not drprocess or qrprocess
+	*prepare a list of the included variables
+	*for drprocess and qrprocess this is done in these functions
+	if `fvops' & ("`method'" == "loc" | "`method'" == "locsca" | "`method'" == "cox" | "`method'" == "cqr") {
+		`vv' fvexpand `varlist' if `touse'
+		local varlistt "`r(varlist)'"
+		foreach vn of local varlistt {
+			`vv' _ms_parse_parts `vn'
+			if ~`r(omit)'{
+				local xvar "`xvar' `vn'"
 			}
-			else{
-				local right=1
-			}
-			mata: qte_cov_coef0=est_cqr("`dep'", "`censoring'", "`varlist'", "`exp'", "`ref'", "`nreg0'", `firstc', `secondc', `nsteps', `right', `beta',`small',`max_it')
-			mata: qte_cov_coef1=est_cqr("`dep'", "`censoring'", "`varlist'", "`exp'", "`counter'", "`nreg1'", `firstc', `secondc', `nsteps', `right', `beta',`small',`max_it')
-			mata: qte_cov_fitted0=rqpred("`quants'","`varlist'","`exp'","`ref'",qte_cov_coef0)
-			mata: qte_cov_fitted1=rqpred("`quants'","`varlist'","`exp'","`counter'",qte_cov_coef1)
-			mata: qte_cov_counter=rqpred("`quants'","`varlist'","`exp'","`counter'",qte_cov_coef0)
 		}
-		if "`method'"=="logit" | "`method'"=="probit" | "`method'"=="cloglog" | "`method'"=="lpm"{
-			drprocess `dep' `varlist' if `ref' == 1 [pw=`exp'], vce(novar)  noprint ndreg(`nreg') `est_opts'
-			mata: qte_cov_coef0 = st_matrix("e(thresholds)")' \ st_matrix("e(coefmat)")
-			sca `nreg0' = rowsof(e(thresholds))
-			drprocess `dep' `varlist' if `counter' == 1 [pw=`exp'], vce(novar)  noprint ndreg(`nreg') `est_opts'
-			mata: qte_cov_coef1 = st_matrix("e(thresholds)")' \ st_matrix("e(coefmat)")
-			sca `nreg1' = rowsof(e(thresholds))
-			mata: qte_cov_fitted0=distpred("`quants'","`varlist'","`exp'","`ref'",qte_cov_coef0, "`method'")
-			mata: qte_cov_fitted1=distpred("`quants'","`varlist'","`exp'","`counter'",qte_cov_coef1, "`method'")
-			mata: qte_cov_counter=distpred("`quants'","`varlist'","`exp'","`counter'",qte_cov_coef0, "`method'")
+	}
+	else local xvar `varlist'
+	quietly gen `ref'=`touse'
+	quietly replace `ref' = 0 if `group'==1
+	quietly gen `counter' = `touse'
+	quietly replace `counter' = 0 if `group'==0
+	quietly sum `ref'
+	sca `obs0'=r(sum)
+	quietly sum `counter'
+	sca `obs1'=r(sum)
+	sca `obs'=`obs0'+`obs1'
+	mata: qte_cov_quant = st_matrix("`quants'")
+	mata: qte_cov_obs0 = mm_quantile(st_data(.,"`dep'","`ref'"), st_data(.,"`exp'","`ref'"), qte_cov_quant)'
+	mata: qte_cov_obs1 = mm_quantile(st_data(.,"`dep'","`counter'"), st_data(.,"`exp'","`counter'"), qte_cov_quant)'
+	if "`method'" == "qr"{
+		local qlow = 0.5/`nreg0'
+		local qhigh = 1-0.5/`nreg0'
+		local qstep = 1/`nreg0'
+		`vv' qrprocess `dep' `varlist' if `ref' == 1 [pw=`exp'], vce(novar) qlow(`qlow') qhigh(`qhigh') qstep(`qstep') noprint `est_opts'
+		mata: qte_cov_coef0 = st_matrix("e(quantiles)")' \ st_matrix("e(coefmat)")
+		mata: qte_cov_fitted0 = rqpred("`quants'", "`e(xvar)'", "`exp'", "`ref'", qte_cov_coef0)
+		mata: qte_cov_counter = rqpred("`quants'", "`e(xvar)'", "`exp'", "`counter'", qte_cov_coef0)
+		local qlow = 0.5/`nreg1'
+		local qhigh = 1-0.5/`nreg1'
+		local qstep = 1/`nreg1'
+		`vv' qrprocess `dep' `varlist' if `counter' == 1 [pw=`exp'], vce(novar) qlow(`qlow') qhigh(`qhigh') qstep(`qstep') noprint `est_opts'
+		mata: qte_cov_coef1 = st_matrix("e(quantiles)")' \ st_matrix("e(coefmat)")
+		mata: qte_cov_fitted1 = rqpred("`quants'", "`e(xvar)'", "`exp'", "`counter'", qte_cov_coef1)
+	}
+	if "`method'"=="cqr"{
+		if "`right'"==""{	
+			local right=0
 		}
-		if "`method'"=="loc"{
-			mata: qte_cov_coef0=est_loc("`dep'","`varlist'","`exp'","`ref'","`nreg0'")
-			mata: qte_cov_coef1=est_loc("`dep'","`varlist'","`exp'","`counter'","`nreg1'")
-			mata: qte_cov_fitted0=rqpred("`quants'","`varlist'","`exp'","`ref'",qte_cov_coef0)
-			mata: qte_cov_fitted1=rqpred("`quants'","`varlist'","`exp'","`counter'",qte_cov_coef1)
-			mata: qte_cov_counter=rqpred("`quants'","`varlist'","`exp'","`counter'",qte_cov_coef0)
+		else{
+			local right=1
 		}
-		if "`method'"=="locsca"{
-			if "`scale'"==""{
-				local scale "`varlist'"
-			}
-			mata: qte_cov_coef0=est_locsca("`dep'","`varlist'","`scale'","`exp'","`ref'","`nreg0'")
-			mata: qte_cov_coef1=est_locsca("`dep'","`varlist'","`scale'","`exp'","`counter'","`nreg1'")
-			mata: qte_cov_fitted0=lspred("`quants'","`varlist'","`scale'","`exp'","`ref'",qte_cov_coef0)
-			mata: qte_cov_fitted1=lspred("`quants'","`varlist'","`scale'","`exp'","`counter'",qte_cov_coef1)
-			mata: qte_cov_counter=lspred("`quants'","`varlist'","`scale'","`exp'","`counter'",qte_cov_coef0)
+		mata: qte_cov_coef0=est_cqr("`dep'", "`censoring'", "`varlist'", "`exp'", "`ref'", "`nreg0'", `firstc', `secondc', `nsteps', `right', `beta',`small',`max_it')
+		mata: qte_cov_coef1=est_cqr("`dep'", "`censoring'", "`varlist'", "`exp'", "`counter'", "`nreg1'", `firstc', `secondc', `nsteps', `right', `beta',`small',`max_it')
+		mata: qte_cov_fitted0=rqpred("`quants'","`varlist'","`exp'","`ref'",qte_cov_coef0)
+		mata: qte_cov_fitted1=rqpred("`quants'","`varlist'","`exp'","`counter'",qte_cov_coef1)
+		mata: qte_cov_counter=rqpred("`quants'","`varlist'","`exp'","`counter'",qte_cov_coef0)
+	}
+	if "`method'"=="logit" | "`method'"=="probit" | "`method'"=="cloglog" | "`method'"=="lpm"{
+		`vv' drprocess `dep' `varlist' if `ref' == 1 [pw=`exp'], vce(novar)  noprint ndreg(`nreg') `est_opts'
+		mata: qte_cov_coef0 = st_matrix("e(thresholds)")' \ st_matrix("e(coefmat)")
+		sca `nreg0' = rowsof(e(thresholds))
+		mata: qte_cov_fitted0=distpred("`quants'","`e(xvar)'","`exp'","`ref'",qte_cov_coef0, "`method'")
+		mata: qte_cov_counter=distpred("`quants'","`e(xvar)'","`exp'","`counter'",qte_cov_coef0, "`method'")
+		`vv' drprocess `dep' `varlist' if `counter' == 1 [pw=`exp'], vce(novar)  noprint ndreg(`nreg') `est_opts'
+		mata: qte_cov_coef1 = st_matrix("e(thresholds)")' \ st_matrix("e(coefmat)")
+		sca `nreg1' = rowsof(e(thresholds))
+		mata: qte_cov_fitted1=distpred("`quants'","`e(xvar)'","`exp'","`counter'",qte_cov_coef1, "`method'")
+	}
+	if "`method'"=="loc"{
+		mata: qte_cov_coef0=est_loc("`dep'","`xvar'","`exp'","`ref'","`nreg0'")
+		mata: qte_cov_coef1=est_loc("`dep'","`xvar'","`exp'","`counter'","`nreg1'")
+		mata: qte_cov_fitted0=rqpred("`quants'","`xvar'","`exp'","`ref'",qte_cov_coef0)
+		mata: qte_cov_fitted1=rqpred("`quants'","`xvar'","`exp'","`counter'",qte_cov_coef1)
+		mata: qte_cov_counter=rqpred("`quants'","`xvar'","`exp'","`counter'",qte_cov_coef0)
+	}
+	if "`method'"=="locsca"{
+		if "`scale'"==""{
+			local scale "`varlist'"
 		}
-		if "`method'"=="cox"{
-			mata: qte_cov_coef0=est_cox("`dep'","`varlist'","`exp'","`ref'")
-			mata: qte_cov_coef1=est_cox("`dep'","`varlist'","`exp'","`counter'")
-			mata: qte_cov_fitted0=coxpred("`quants'","`varlist'","`exp'","`ref'",qte_cov_coef0)
-			mata: qte_cov_fitted1=coxpred("`quants'","`varlist'","`exp'","`counter'",qte_cov_coef1)
-			mata: qte_cov_counter=coxpred("`quants'","`varlist'","`exp'","`counter'",qte_cov_coef0)
-		}
-		return scalar obs=`obs'
-		return scalar obs0=`obs0'
-		return scalar obs1=`obs1'
-		return matrix quants `quants'
-		return scalar nreg0=`nreg0'
-		return scalar nreg1=`nreg1'
+		mata: qte_cov_coef0=est_locsca("`dep'","`varlist'","`scale'","`exp'","`ref'","`nreg0'")
+		mata: qte_cov_coef1=est_locsca("`dep'","`varlist'","`scale'","`exp'","`counter'","`nreg1'")
+		mata: qte_cov_fitted0=lspred("`quants'","`varlist'","`scale'","`exp'","`ref'",qte_cov_coef0)
+		mata: qte_cov_fitted1=lspred("`quants'","`varlist'","`scale'","`exp'","`counter'",qte_cov_coef1)
+		mata: qte_cov_counter=lspred("`quants'","`varlist'","`scale'","`exp'","`counter'",qte_cov_coef0)
+	}
+	if "`method'"=="cox"{
+		mata: qte_cov_coef0=est_cox("`dep'","`varlist'","`exp'","`ref'")
+		mata: qte_cov_coef1=est_cox("`dep'","`varlist'","`exp'","`counter'")
+		mata: qte_cov_fitted0=coxpred("`quants'","`varlist'","`exp'","`ref'",qte_cov_coef0)
+		mata: qte_cov_fitted1=coxpred("`quants'","`varlist'","`exp'","`counter'",qte_cov_coef1)
+		mata: qte_cov_counter=coxpred("`quants'","`varlist'","`exp'","`counter'",qte_cov_coef0)
+	}
+	return scalar obs=`obs'
+	return scalar obs0=`obs0'
+	return scalar obs1=`obs1'
+	return matrix quants `quants'
+	return scalar nreg0=`nreg0'
+	return scalar nreg1=`nreg1'
 end
 
 *Mata function doing the unconditional estimation using cox
@@ -734,8 +765,8 @@ mata real matrix distpred(string scalar quants,string scalar varlist,string scal
 	real rowvector ys
 	real matrix Reg, Coef, Pred
 	Quants=st_matrix(quants)
-	Reg=st_data(.,tokens(varlist),touse)
-	Wei=st_data(.,weights,touse)
+	Wei=st_data(., weights, touse)
+	Reg=get_reg(varlist, touse, rows(Wei))
 	ys=Coef1[1,.]
 	Coef=Coef1[2..rows(Coef1),1..(cols(Coef1)-1)]
 	Pred=cross(Reg'\J(1,rows(Reg),1),Coef)
@@ -756,12 +787,12 @@ mata real matrix rqpred(string scalar quants, string scalar varlist, string scal
 	real rowvector wq
 	real matrix Reg, Coef, Pred
 	Quants=st_matrix(quants)
-	Reg=st_data(.,tokens(varlist),touse)
-	Wei=st_data(.,weights,touse)
+	Wei=st_data(., weights, touse)
+	Reg=get_reg(varlist, touse, rows(Wei))
 	wq=Coef1[1,.]
 	wq=(0,(wq[1..(cols(wq)-1)]+wq[2..cols(wq)]):/2,1)
 	wq=wq[2..cols(wq)]-wq[1..(cols(wq)-1)]
-	Coef=Coef1[2..rows(Coef1),.]
+	Coef=Coef1[2..rows(Coef1),.]	
 	Pred=cross(Reg'\J(1,rows(Reg),1),Coef)
 	RQ_deco_ReT=mm_quantile(vec(Pred),vec(Wei*wq),Quants)'
 	return(RQ_deco_ReT)
@@ -866,11 +897,11 @@ mata real matrix est_loc(string scalar dep1, string scalar reg1, string scalar w
 {
 	real colvector dep, wei, beta, resid
 	real matrix reg, coef
-	real scalar nreg
+	real scalar nreg, nobs
 	dep=st_data(.,dep1,touse)
-	reg=st_data(.,tokens(reg1),touse)
-	reg=reg,J(rows(reg),1,1)
-	wei=st_data(.,wei1,touse)
+	nobs = rows(dep)
+	wei=st_data(., wei1, touse)
+	reg=get_reg(reg1, touse, nobs), J(nobs, 1, 1)
 	nreg=st_numscalar(nreg1)
 	coef=J(cols(reg)+1,nreg,.)
 	coef[1,.]=(0.5/nreg:+(0..(nreg-1)):/nreg)
@@ -979,4 +1010,18 @@ mata real matrix est_cqrl(real colvector y, real colvector c, real matrix x, rea
 	}
 	coef=quants'\coef
 	return(coef)
+}
+
+mata real matrix get_reg(string scalar input, string scalar touse, real scalar nobs)
+{
+	string rowvector varlist
+	real scalar nreg, i
+	real matrix output
+	varlist = tokens(input) 
+	nreg = cols(varlist)
+	output = J(nobs, nreg, .)
+	for(i=1; i <= nreg; i++){
+		output[.,i] = st_data(., varlist[1,i], touse)
+	}
+	return(output)
 }

@@ -43,7 +43,7 @@ program drprocess, eclass byable(recall) sortpreserve
 		gettoken dep varlist : varlist
 		if `fvops' {
 			`vv' _fv_check_depvar `dep'
-			`vv'  quiet _rmcoll `varlist' [aw=`exp'] if `touse'
+			`vv'  quiet _rmcoll `varlist' [pw=`exp'] if `touse'
 			local varlist "`r(varlist)'"
 			`vv' fvexpand `varlist' if `touse'
 			local varlistt "`r(varlist)'"
@@ -60,8 +60,6 @@ program drprocess, eclass byable(recall) sortpreserve
 						tempvar factor`i'
 						quiet gen `factor`i''=`vn' if `touse'
 						local varlist `varlist' `factor`i''
-	*					local temp=strtoname("`vn'",0)
-	*					local variable_names `variable_names' `temp'
 						local variable_names `variable_names' `vn'
 					}
 					local i=`i'+1
@@ -70,8 +68,9 @@ program drprocess, eclass byable(recall) sortpreserve
 		}
 		else{
 			*check multicolinearity
-			quiet _rmcoll `varlist' [aw=`exp'] if `touse'
+			quiet _rmcoll `varlist' [pw=`exp'] if `touse'
 			local varlist `r(varlist)'
+			local varlistt `r(varlist)'
 			local variable_names `varlist'
 		}
 
@@ -115,6 +114,9 @@ program drprocess, eclass byable(recall) sortpreserve
 			if `ndreg'<1{
 				dis as error "The option ndreg must contain a strictly positive integer."
 				error 400
+			}
+			else if `ndreg' == 1 {
+				mata: st_matrix("`quants'", mm_median(st_data(.,"`dep'","`touse'")))
 			}
 			else if `ndreg'>=`obs'{
 				mata: st_matrix("`quants'", uniqrows(st_data(.,"`dep'","`touse'")))
@@ -436,6 +438,7 @@ program drprocess, eclass byable(recall) sortpreserve
 			ereturn scalar rep=`reps'
 		}
 		ereturn local xvar `"`variable_names'"'
+		ereturn local varlist `"`varlistt'"'
 		ereturn local depvar `"`dep'"'
 		if "`functional'"!=""{
 			`vv' mat rownames `pointwise' = `conams'

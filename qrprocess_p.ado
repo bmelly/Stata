@@ -235,12 +235,10 @@ mata void rearranged(string scalar reg, string scalar touse, string scalar quant
 //		}
 		q_index[i,1]=sum(quants:<=pred_quants[i])
 	}
+	n = sum(st_data(., touse, touse))
 	if(reg!=""){
-		x=st_data(.,tokens(reg),touse)
-		n=rows(x)
-		x=x,J(n,1,1)
+		x = get_reg(reg, touse, n), J(n,1,1)
 	} else {
-		n=sum(st_data(.,touse))
 		x=J(n,1,1)
 	}
 	coef=st_matrix("e(coefmat)")
@@ -260,12 +258,10 @@ mata void rcdf(string scalar reg, string scalar touse, string scalar eval, strin
 	quants=st_matrix("e(quantiles)")
 	evalu=st_matrix(eval)
 	nw=rows(evalu)
+	n = sum(st_data(., touse, touse))
 	if(reg!=""){
-		x=st_data(.,tokens(reg),touse)
-		n=rows(x)
-		x=x,J(n,1,1)
+		x = get_reg(reg, touse, n), J(n,1,1)
 	} else {
-		n=sum(st_data(.,touse))
 		x=J(n,1,1)
 	}
 	coef=st_matrix("e(coefmat)")
@@ -277,4 +273,18 @@ mata void rcdf(string scalar reg, string scalar touse, string scalar eval, strin
 		}
 	}
 	st_store(.,tokens(out),touse,cdf)
+}
+
+mata real matrix get_reg(string scalar input, string scalar touse, real scalar nobs)
+{
+	string rowvector varlist
+	real scalar nreg, i
+	real matrix output
+	varlist = tokens(input) 
+	nreg = cols(varlist)
+	output = J(nobs, nreg, .)
+	for(i=1; i <= nreg; i++){		
+		output[.,i] = st_data(., varlist[1,i], touse)
+	}
+	return(output)
 }
