@@ -44,7 +44,7 @@ program xtmdqr, eclass byable(recall) sortpreserve
 		local i=1
 		quietly foreach v of local reg {
 			tempname mean_`i'
-			bysort gid: egen `mean_`i'' = mean(`v')
+			bysort `group': egen `mean_`i'' = mean(`v')
 			if "`be'"==""{
 				tempname demean_`i'
 				generate `demean_`i'' = `v' - `mean_`i''
