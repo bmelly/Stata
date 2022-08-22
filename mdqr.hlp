@@ -42,6 +42,7 @@
 {synopt:{opt qr_opts(options)}}options that are passed to {help qrprocess}{p_end}
 {synopt:{opt s:ave_first(newvarname)}}create variables containing the quantile regression estimates{p_end}
 {synopt:{opt l:oad_first(varname)}}provide variables containing the quantile regression estimates{p_end}
+{synopt:{opt par:allel}}uses parallel processing to compute the first-stage quantile regressions{p_end}
 
 {syntab:Second stage estimation}
 {synopt:{opt e:st_command(command)}}specify the command used in the second stage{p_end}
@@ -139,6 +140,13 @@ second step. For this reason, we have implemented the option {cmd:save_first},
 which allows saving the fitted values from the first stage. Later it is then
 possible to estimate only the second step by providing the previously estimated
 results with the option {cmd:load_first}.
+
+{pstd}The computationally intensive first-stage quantile regressions can easily 
+be computed in parallel on several cores. Parallel computing can be activated with 
+the option {cmd:parallel}. The package {cmd:parallel} offered by Vega Yon and 
+Quistorf (2019) must first be installed
+by typing {stata `"net install parallel, from("https://raw.github.com/gvegayon/parallel/stable/")"'}
+and the number of child processes set with {cmd:parallel initialize}, see {help parallel} and {help mdqr##example4:Example 4 below}.
 
 {pstd}The command {cmd:plotprocess}, which is included in the package 
 {cmd:qrprocess}, can be used after {cmd:mdqr} to plot the coefficients and their
@@ -313,6 +321,14 @@ default is set by {cmd:set level}; see
 {pstd}You can install this command by typing "ssc install reghdfe".{p_end}
 {phang2}. {stata mdqr y state_char ind_char treated, group(state year) est_command(reghdfe) est_opts(absorb(state year))}{p_end}
 
+{marker example4}{...}
+{title:Example 4: parallel processing}
+
+{pstd}We initialize parallel processing.{p_end}
+{phang2}. {stata parallel initialize}{p_end}
+{pstd}We use {cmd:mdqr} with parallel computing of the quantile regressions.{p_end}
+{phang2}. {stata mdqr y state_char ind_char treated, group(state year) parallel}{p_end}
+
 
 {title:Saved results}
 
@@ -365,15 +381,16 @@ Type {stata "ssc install moremata"} to install it.
 {title:References}
 
 
-{phang} Melly, B., and M. Pons. 2022. Minimum Distance Estimation of Quantile 
-Panel Data Models. {it:Working paper}. 
-{browse "http://martinapons.github.io/files/MD.pdf":http:/martinapons.github.io/files/MD.pdf}
-
-
 {phang} Jann, B. 2005b. moremata: Stata module (Mata) to provide various 
 functions. Statistical Software Components S455001, Department of Economics, 
 Boston College. {browse "http://ideas.repec.org/c/boc/bocode/s455001.html":http://ideas.repec.org/c/boc/bocode/s455001.html}.
 
+{phang} Melly, B., and M. Pons. 2022. Minimum Distance Estimation of Quantile 
+Panel Data Models. {it:Working paper}. 
+{browse "http://martinapons.github.io/files/MD.pdf":http:/martinapons.github.io/files/MD.pdf}
+
+{phang} Vega Yon, George G., and Brian Quistorff. "parallel: A command for parallel computing." The Stata Journal 19.3 (2019): 667-684.
+{browse "https://doi.org/10.1177/1536867X19874242":https://doi.org/10.1177/1536867X19874242}.
 
 {title:Authors}
 
