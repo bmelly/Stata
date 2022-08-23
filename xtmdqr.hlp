@@ -148,6 +148,9 @@ to install this package. Finally, {cmd:qrprocess}
 itself requires the package {cmd:moremata} (see Jann [2005b]). 
 Type {cmd:ssc install moremata} to install it.
 
+{pstd}Parallel processing requires the package {cmd:parallel}; type
+{stata `"net install parallel, from("https://raw.github.com/gvegayon/parallel/stable/")"'}.
+
 
 {title:Methods and formulas}
 
@@ -163,6 +166,9 @@ Panel Data Models. {it:Working paper}.
 {phang} Jann, B. 2005b. moremata: Stata module (Mata) to provide various 
 functions. Statistical Software Components S455001, Department of Economics, 
 Boston College. {browse "http://ideas.repec.org/c/boc/bocode/s455001.html":http://ideas.repec.org/c/boc/bocode/s455001.html}.
+
+{phang} Vega Yon, George G., and Brian Quistorff. "parallel: A command for parallel computing." The Stata Journal 19.3 (2019): 667-684.
+{browse "https://doi.org/10.1177/1536867X19874242":https://doi.org/10.1177/1536867X19874242}.
 
 
 {title:Authors}

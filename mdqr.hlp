@@ -368,9 +368,11 @@ default is set by {cmd:set level}; see
 
 {pstd}This command requires Stata 9.2 or later.  Stata 11 is required to use
 factor variables.  {cmd:qrprocess} is required; type {stata `"net install qrprocess, from("https://raw.githubusercontent.com/bmelly/Stata/main/")"'}
-to install this package. Finally, {cmd:qrprocess}
-itself requires the package {cmd:moremata} (see Jann [2005b]). 
+to install this package. Finally, {cmd:qrprocess} itself requires the package {cmd:moremata} (see Jann [2005b]). 
 Type {stata "ssc install moremata"} to install it.
+
+{pstd}Parallel processing requires the package {cmd:parallel}; type
+{stata `"net install parallel, from("https://raw.github.com/gvegayon/parallel/stable/")"'}.
 
 
 {title:Methods and formulas}
