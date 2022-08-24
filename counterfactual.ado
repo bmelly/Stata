@@ -8,12 +8,6 @@ program counterfactual, eclass
       	di as error "-moremata- is required; type {stata ssc install moremata} and restart Stata."
 		error 499
 	}
-*check that qrprocess is installed
-	capt findfile qrprocess.ado
-	if _rc {
-      	di as error "-qrprocess- is required; type {net install qrprocess, from("https://raw.githubusercontent.com/bmelly/Stata/main/")}"
-		error 499
-	}
 	if replay() {
 		if "`e(cmd)'"!="counterfactual" { 
 			error 301 
@@ -55,6 +49,22 @@ program counterfactual, eclass
 		if "`method'"=="locsca" & "`scale'"!="" & "`group'"=="" & "`counterscale'"==""{
 			dis as error "If the location scale estimator is used with the option scale, then either the group option or the counterscale option must be provided."
 			exit
+		}
+				if "`method'" == "qr"{
+			*check that qrprocess is installed
+			capt findfile qrprocess.ado
+			if _rc {
+				di as error `"-qrprocess- is required; type {stata "net install qrprocess, from(https://raw.githubusercontent.com/bmelly/Stata/main/)"}"'
+				error 499
+			}
+		}
+		if "`method'"=="logit" | "`method'"=="probit" | "`method'"=="lpm" | "`method'"=="cloglog"{
+			*check that drprocess is installed
+			capt findfile drprocess.ado
+			if _rc {
+				di as error `"-drprocess- is required; type {stata "net install drprocess, from(https://raw.githubusercontent.com/bmelly/Stata/main/)"}"'
+				error 499
+			}
 		}
 		marksample touse
 		markout `touse' `group' `counterfactual' `scale' `counterscale' `censoring' 

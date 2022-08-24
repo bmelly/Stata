@@ -9,12 +9,6 @@ program cdeco, eclass
       	di as error "-moremata- is required; type {stata ssc install moremata} and restart Stata."
 		error 499
 	}
-*check that qrprocess is installed
-	capt findfile qrprocess.ado
-	if _rc {
-      	di as error "-qrprocess- is required; type {net install qrprocess, from("https://raw.githubusercontent.com/bmelly/Stata/main/")}"
-		error 499
-	}
 	if replay() {
 		if "`e(cmd)'"!="cdeco" { 
 			error 301 
@@ -56,6 +50,22 @@ program cdeco, eclass
 			if "`censoring'"==""{
 				dis as error "The option censoring must be provided to use the censored quantile regression estimator."
 				exit
+			}
+		}
+		if "`method'" == "qr"{
+			*check that qrprocess is installed
+			capt findfile qrprocess.ado
+			if _rc {
+				di as error `"-qrprocess- is required; type {stata "net install qrprocess, from(https://raw.githubusercontent.com/bmelly/Stata/main/)"}"'
+				error 499
+			}
+		}
+		if "`method'"=="logit" | "`method'"=="probit" | "`method'"=="lpm" | "`method'"=="cloglog"{
+			*check that drprocess is installed
+			capt findfile drprocess.ado
+			if _rc {
+				di as error `"-drprocess- is required; type {stata "net install drprocess, from(https://raw.githubusercontent.com/bmelly/Stata/main/)"}"'
+				error 499
 			}
 		}
 		marksample touse

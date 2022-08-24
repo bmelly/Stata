@@ -18,7 +18,7 @@ program mdqr, eclass byable(recall) sortpreserve
 *check that qrprocess is installed
 	capt findfile qrprocess.ado
 	if _rc {
-      	di as error "-qrprocess- is required; type {net install qrprocess, from("https://raw.githubusercontent.com/bmelly/Stata/main/")}"
+      	di as error `"-qrprocess- is required; type {stata "net install qrprocess, from(https://raw.githubusercontent.com/bmelly/Stata/main/)"}"'
 		error 499
 	}
 *if the command is used without arguments it shows the previous results

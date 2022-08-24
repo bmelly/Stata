@@ -7,12 +7,6 @@ program cdeco_jmp, eclass
       	di as error "-moremata- is required; type {stata ssc install moremata} and restart Stata."
 		error 499
 	}
-*check that qrprocess is installed
-	capt findfile qrprocess.ado
-	if _rc {
-      	di as error "-qrprocess- is required; type {net install qrprocess, from("https://raw.githubusercontent.com/bmelly/Stata/main/")}"
-		error 499
-	}
 	syntax varlist [if] [in] [pweight/], Group(varname) [Method(string) Quantiles(numlist >0 <1 sort) NReg(real 100) Reps(integer 100) Level(cilevel) First(real 0.1) Last(real 0.9) noboot noprint noprintdeco noprinttest SCale(varlist) SAVing(string) CONS_test(string) beta(real 0.9995) small(real 0.00001) max_it(real 50) Censoring(varname) Firstc(real 0.1) Secondc(real 0.05) NSteps(integer 3) RIght est_opts(string)]
 	local nreg=round(`nreg')
 	if `nreg'<1{
@@ -34,6 +28,22 @@ program cdeco_jmp, eclass
 		if "`censoring'"==""{
 			dis as error "The option censoring must be provided to use the censored quantile regression estimator."
 			exit
+		}
+	}
+	if "`method'" == "qr"{
+		*check that qrprocess is installed
+		capt findfile qrprocess.ado
+		if _rc {
+			di as error `"-qrprocess- is required; type {stata "net install qrprocess, from(https://raw.githubusercontent.com/bmelly/Stata/main/)"}"'
+			error 499
+		}
+	}
+	if "`method'"=="logit" | "`method'"=="probit" | "`method'"=="lpm" | "`method'"=="cloglog"{
+		*check that drprocess is installed
+		capt findfile drprocess.ado
+		if _rc {
+			di as error `"-drprocess- is required; type {stata "net install drprocess, from(https://raw.githubusercontent.com/bmelly/Stata/main/)"}"'
+			error 499
 		}
 	}
 	marksample touse
