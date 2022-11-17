@@ -49,8 +49,8 @@
 {synopt:{opt est_opts(options)}}options that are passed to the command defined by {cmd:est_command}{p_end}
 
 {syntab:Inference}
-{synopt:{opt c:luster(varname:clustvar)}}specify that the standard errors allow for intracluster correlation{p_end}
-{synopt:{opt boot:strap(string:string)}}specify the {help bootstrap} prefix used in the second stage{p_end}
+{synopt:{opth c:luster(varname:clustvar)}}specify that the standard errors allow for intracluster correlation{p_end}
+{synopt:{opth boot:strap(string:string)}}specify the {help bootstrap} prefix used in the second stage{p_end}
 
 {syntab:Reporting}
 {synopt:{opt le:vel(#)}}set confidence level; default is {cmd:level(95)}{p_end}
