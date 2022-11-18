@@ -1,13 +1,13 @@
 *mdqr: minimum distance quantile regression
-*! version 0.0.4  03.08.2022  Blaise Melly
+*! version 0.0.5  16.11.2022  Blaise Melly
 
-*To do (potentially): (1) parallel processing with the parallel package (or multishell)
+*To do (potentially): (1) parallel processing with the parallel package (or multishell) DONE
 *(2) Covariance between coefficients are different quantiles (multi-variate GMM?)
 *(4) bootstrap all the quantiles together to obtain valid covariances.
-*(5) merge est_command and est_opts
 
 cap prog drop mdqr
 program mdqr, eclass byable(recall) sortpreserve
+	local stata_version = _caller() 
 	version 9.2
 *check that moremata is installed
 	capt findfile lmoremata.mlib
@@ -45,7 +45,7 @@ program mdqr, eclass byable(recall) sortpreserve
 			local exo ""
 		}
 		else {
-			if _caller() >= 11{
+			if `stata_version' >= 11{
 				version 11.1: fvexpand `exo'
 				if "`r(fvops)'" == "true"{
 					local fvops = 1
@@ -64,7 +64,7 @@ program mdqr, eclass byable(recall) sortpreserve
 			local endo ""
 		}
 		else {
-			if _caller() >= 11{
+			if `stata_version' >= 11{
 				version 11.1: fvexpand `endo'
 				if "`r(fvops)'" == "true"{
 					local fvops = 1
@@ -82,7 +82,7 @@ program mdqr, eclass byable(recall) sortpreserve
 			local "`inst'" ""
 		}
 		else {
-			if _caller() >= 11{
+			if `stata_version' >= 11{
 				version 11.1: fvexpand `inst'
 				if "`r(fvops)'" == "true"{
 					local fvops = 1
@@ -98,7 +98,7 @@ program mdqr, eclass byable(recall) sortpreserve
 			local vv:  di "version `version', missing: "
 		}
 		else if `fvops' | "`est_command'"=="ivreghdfe"{
-			local vv: di "version " string(max(11,_caller())) ", missing: " 
+			local vv: di "version " string(max(11, `stata_version')) ", missing: " 
 		}
 *sample definition
 		marksample touse
@@ -187,7 +187,7 @@ program mdqr, eclass byable(recall) sortpreserve
 				local est_command "regress"
 			}
 			else if wordcount("`endo'") == wordcount("`inst'") {
-				if _caller() < 10 {
+				if `stata_version' < 10 {
 					local est_command "ivreg "
 				}
 				else {
@@ -195,7 +195,7 @@ program mdqr, eclass byable(recall) sortpreserve
 				}
 			}
 			else {
-				if _caller() < 10 {
+				if `stata_version' < 10 {
 					local est_command "ivreg2 "
 					local est_opts "`est_opts' gmm "
 				}
@@ -368,15 +368,15 @@ program mdqr, eclass byable(recall) sortpreserve
 			dis as text _column(0) "No. of obs." _c
 			dis as result _column(30) %-8.0f `obs'
 			dis as text _column(0) "1st stage estimation : " _c
-			dis as result _column(30) %-8.0f "qrprocess."
+			dis as result _column(30) %-8.0f "qrprocess"
 			dis as text _column(0) "2nd stage estimation : " _c
-			dis as result _column(30) %-8.0f "`est_command'."
+			dis as result _column(30) %-8.0f "`est_command'"
 			dis as text _column(0) "Variance : " _continue
 			if "`bootstrap'"=="bootstrap"{
-				dis as result _column(30) %-8.0f "clustered bootstrap."
+				dis as result _column(30) %-8.0f "clustered bootstrap"
 			}
 			else {
-				dis as result _column(30) %-8.0f "clustered robust."
+				dis as result _column(30) %-8.0f "clustered robust"
 			}
 			dis
 			dis as text "{hline 13}" "{c TT}" "{hline 64}"

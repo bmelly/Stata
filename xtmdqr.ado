@@ -1,10 +1,12 @@
 *xtmdqr: panel data minimum distance quantile regression
-*! version 0.0.1  03.08.2022  Blaise Melly
+*! version 0.0.2  16.11.2022  Blaise Melly
 
 *Ideas: (1) an option to add a linear trend? This is trivial but I am
 *sure that many users will try to add indicator variables for periods...
 
+cap prog drop xtmdqr
 program xtmdqr, eclass byable(recall) sortpreserve
+	local stata_version = _caller() 
 	version 9.2
 *if the command is used without arguments it shows the previous results
 	if replay() {
@@ -29,7 +31,7 @@ program xtmdqr, eclass byable(recall) sortpreserve
 		}
 *separate dependent variable from regressors
 		gettoken dep reg : varlist
-		if _caller() >= 11{
+		if `stata_version' >= 11{
 			version 11.1: fvexpand `reg'
 			if "`r(fvops)'" == "true"{
 				local fvops = 1
@@ -57,7 +59,7 @@ program xtmdqr, eclass byable(recall) sortpreserve
 			}
 			local i = `i' + 1 
 		}
-		mdqr `dep' (`reg' = `inst') `if' `in' [`weight'`exp'], group(`group') quantiles(`quantiles') cluster(`cluster') qr_opts(`qr_opts') bootstrap(`bootstrap') level(`level') `print' save_first(`save_first') load_first(`load_first') n_small(`n_small') `parallel'
+		version `stata_version': mdqr `dep' (`reg' = `inst') `if' `in' [`weight'`exp'], group(`group') quantiles(`quantiles') cluster(`cluster') qr_opts(`qr_opts') bootstrap(`bootstrap') level(`level') `print' save_first(`save_first') load_first(`load_first') n_small(`n_small') `parallel'
 		ereturn local cmd "xtmdqr"
 	}
 end
