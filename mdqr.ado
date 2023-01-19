@@ -1,8 +1,7 @@
 *mdqr: minimum distance quantile regression
-*! version 0.0.5  16.11.2022  Blaise Melly
+*! version 0.0.6  19.01.2023  Blaise Melly
 
-*To do (potentially): (1) parallel processing with the parallel package (or multishell) DONE
-*(2) Covariance between coefficients are different quantiles (multi-variate GMM?)
+*To do (potentially): *(2) Covariance between coefficients are different quantiles (multi-variate GMM?)
 *(4) bootstrap all the quantiles together to obtain valid covariances.
 
 cap prog drop mdqr
@@ -35,6 +34,26 @@ program mdqr, eclass byable(recall) sortpreserve
 	else {
 *syntax
 		syntax anything [if] [in] [pweight] , Group(varlist) [Quantiles(numlist >0 <1 sort) Cluster(varname) Est_command(string) est_opts(string) qr_opts(string) BOOTstrap(string) Level(cilevel) noPrint Save_first(name) Load_first(name) Version(string) n_small(integer 1) PARallel]
+*temporary names
+		tempname quants covariance coefficients coefmat
+		tempvar fitted
+*cleaning of the quantiles
+*default quantiles: 0.1 0.25 0.5 0.75 0.9
+		if "`quantiles'"==""{
+			local quantiles "0.1 0.25 0.5 0.75 0.9"
+		}
+		mata: st_matrix("`quants'", strtoreal(tokens(st_local("quantiles")))')
+		local nq=rowsof(`quants')
+*Generate the fitted values for the first stage (objective: get an early error message if variables with the same name already exist).
+		forvalues q = 1/`nq'{
+				if "`save_first'" == "" {
+					tempvar fit`q'
+				}
+				else {
+					local fit`q' "`save_first'`q'"
+				}
+				quiet gen `fit`q''=.
+			}			
 *separate dependent variable from regressors
 		gettoken dep anything : anything
 		confirm numeric variable `dep'
@@ -109,56 +128,115 @@ program mdqr, eclass byable(recall) sortpreserve
 		quietly su `groupvar'  if `touse', meanonly
 		local ngroup = r(max)
 *Identify time-varying exogenous variables
-		tempvar n_tv_var test
-		quiet gen `n_tv_var' = 1 + `n_small' if `touse'
+		tempvar n_tv_var test temp
+		quiet gen `n_tv_var' = 1 if `touse'
 		quietly gen `test' = .	
-		if "`exo'" != ""{
+		quietly gen `temp' = .
+/*		if "`exo'" != ""{
 			quietly foreach v of local exo {
+				if strpos("`v'", "b.")==0{
+					if `fvops' == 1 & strpos("`v'", ".") > 0{
+							quietly replace `temp' = `v'
+							local v_unfactored `temp'
+						}
+						else{
+							local v_unfactored "`v'"
+					}
+				bysort `touse' `groupvar' (`v_unfactored') : replace `test' = (`v_unfactored'[1] == `v_unfactored'[_N]) if `touse'
+					su `test'  if `touse', meanonly
+					if r(min) == 0 {
+						local exo_tv "`exo_tv' `v'"
+						replace `n_tv_var' = `n_tv_var' + (1 - `test') if `touse'
+					}
+				}
+			}
+		}*/
+		local potentially_tv "`exo' `endo'"
+		if "`potentially_tv'" != ""{
+			local pastv ""
+			local factor = 0
+			foreach v of local potentially_tv {
 				if `fvops' == 1{
 					unopvarlist `v'
-					local v_unfactored `r(varlist)'
-				} 
-				else {
-					local v_unfactored "`v'"
+					if "`v'" != "`r(varlist)'"{
+						local factor = `factor' + 1
+						local v `r(varlist)'
+						if "`v'" == "`pastv'"{						
+							quietly replace `n_tv_var' = `n_tv_var' + (1 - `test') if `touse'
+							continue
+						}
+					}
+					else{
+						local factor = 0
+					}
+					local pastv "`v'"
 				}
-				bysort `touse' `groupvar' (`v_unfactored') : replace `test' = (`v_unfactored'[1] == `v_unfactored'[_N]) if `touse'
-				su `test'  if `touse', meanonly
+				quietly bysort `touse' `groupvar' (`v') : replace `test' = (`v'[1] == `v'[_N]) if `touse'
+				quietly su `test'  if `touse', meanonly
 				if r(min) == 0 {
-					local exo_tv "`exo_tv' `v'"
-					replace `n_tv_var' = `n_tv_var' + (1 - `test') if `touse'
+					if `factor' == 0{
+						local tv "`tv' `v'"
+					}
+					else{
+						local tv "`tv' i.`v'"
+					}
+					if `factor' != 1{
+						quietly replace `n_tv_var' = `n_tv_var' + (1 - `test') if `touse'			
+					}
 				}
-			}
- 		}	
-*Identify time-varying endogenous variables.
-		if "`endo'" != "" {
-			quietly foreach v of local endo { 
-				bysort `touse' `groupvar' (`v') : replace `test' = `v'[1] == `v'[_N] if `touse'
-				su `test'  if `touse', meanonly 
-				if r(min) == 0 {
-					local endo_tv "`endo_tv' `v'"
-					replace `n_tv_var' = `n_tv_var' + (1 - `test') if `touse'
-				} 	
 			}
 		}
-*n_small is at equal to the number of time-varying variables + 1
-		tempvar n_by_group		
+/*Identify time-varying endogenous variables.
+		if "`endo'" != "" {
+			quietly foreach v of local endo { 
+				if strpos("`v'", "b.")==0{
+					if `fvops' == 1 & strpos("`v'", ".") > 0{
+							quietly replace `temp' = `v'
+							local v_unfactored `temp'
+						}
+						else{
+							local v_unfactored "`v'"
+					}
+					bysort `touse' `groupvar' (`v_unfactored') : replace `test' = `v_unfactored'[1] == `v_unfactored'[_N] if `touse'
+					su `test'  if `touse', meanonly 
+					if r(min) == 0 {
+						local endo_tv "`endo_tv' `v'"
+						replace `n_tv_var' = `n_tv_var' + (1 - `test') if `touse'
+					} 	
+				}
+			}
+		}
+*/
+		tempvar n_by_group new_touse group2
 		quiet egen  `n_by_group' = count(`touse'), by (`groupvar')
-		quiet replace `touse' = 0 if `n_by_group' < `n_tv_var'	
+		quiet gen `new_touse' = 1 if `n_by_group' >= `n_small' + `n_tv_var' & `touse'
+		quiet replace `new_touse' = 0 if `n_by_group' < `n_small' + min(`n_tv_var', 2) & `touse'
+		quietly egen `group2' = group(`group') if missing(`new_touse') & `touse'		
+		quietly su `group2' if missing(`new_touse') & `touse', meanonly
+		local ngroup = r(max)
+		forvalues i = 1/`ngroup' {
+			quietly `vv' reg `dep' `tv' if `group2' == `i' & `touse' [`weight'`exp'] 
+			if e(df_r) >= `n_small'{
+				quiet replace `new_touse' = 1 if `group2' == `i' & `touse'
+			}
+		}
+		quiet recode `new_touse' . = 0
+		quiet replace `touse' = `new_touse' * `touse'
 *we redo the group variable		
 		quiet drop `groupvar'
 		quietly egen `groupvar' = group(`group') if `touse'
 		quietly su `groupvar'  if `touse', meanonly
-		local ngroup = r(max)
+		local ngroup = r(max)		
 *Check that the instruments are linear functions of the 1st stage regressors
 *Maybe it is too much to do that.
 		if "`inst'" != "" {
 			quietly foreach v of local inst { 
 				forvalues i = 1/`ngroup' {					
-					`vv' regress `v' `exo_tv' `endo_tv' [`weight'`exp'] if `groupvar' == `i' & `touse'
+					quietly `vv' regress `v' `tv' [`weight'`exp'] if `groupvar' == `i' & `touse'
 					if e(r2) < 0.999999 {
 						display as error "The instrumental variables must be linear functions of the time-varying variables."
 						error 498
-					} 			
+					}
 				}
 			}
 		}		
@@ -222,34 +300,20 @@ program mdqr, eclass byable(recall) sortpreserve
 *number of observations
 		quietly sum `dep' if `touse'
 		local obs=r(N)
-*temporary names
-		tempname quants covariance coefficients coefmat
-		tempvar fitted
-*cleaning of the quantiles
-*default quantiles: 0.1 0.25 0.5 0.75 0.9
-		if "`quantiles'"==""{
-			local quantiles "0.1 0.25 0.5 0.75 0.9"
-		}
-		mata: st_matrix("`quants'", strtoreal(tokens(st_local("quantiles")))')
-		local nq=rowsof(`quants')
 *1st stage Estimation
 		if "`load_first'" == "" {
-			forvalues q = 1/`nq'{
-				if "`save_first'" == "" {
-					tempvar fit`q'
-				}
-				else {
-					local fit`q' "`save_first'`q'"
-				}
-				quiet gen `fit`q''=.
-			}			
 			if "`parallel'" == ""{
 				forvalues i = 1/`ngroup' {		
-					`vv' qrprocess `dep' `exo_tv' `endo_tv' [`weight'`exp'] if `groupvar' == `i', vce(novar) quantile(`quantiles') noprint `qr_opts'
-					forvalues q = 1/`nq'{
-						quietly predict `fitted' if `groupvar' == `i', equation(#`q')
-						quietly replace `fit`q''=`fitted' if `groupvar' == `i'
-						quietly drop `fitted'
+					capture `vv' qrprocess `dep' `tv' [`weight'`exp'] if `groupvar' == `i', vce(novar) quantile(`quantiles') noprint `qr_opts'
+					if _rc==0{
+						forvalues q = 1/`nq'{
+							quietly predict `fitted' if `groupvar' == `i', equation(#`q')
+							quietly replace `fit`q''=`fitted' if `groupvar' == `i'
+							quietly drop `fitted'
+						}
+					}
+					else{
+						replace `touse' = 0  if `groupvar' == `i'
 					}
 				}
 			}
@@ -258,7 +322,7 @@ program mdqr, eclass byable(recall) sortpreserve
 					local fit_list "`fit_list' `fit`q''"
 				}
 				quietly sort `groupvar'
-				quietly parallel, by(`groupvar'): by `groupvar': par_qrprocess, command(`vv' qrprocess `dep' `exo_tv' `endo_tv' [`weight'`exp']) opts(vce(novar) quantile(`quantiles') noprint `qr_opts') nq(`nq') fit(`fit_list')
+				quietly parallel, by(`groupvar'): by `groupvar': par_qrprocess  `dep' `tv' [`weight'`exp'], command(`vv' qrprocess) opts(vce(novar) quantile(`quantiles') `qr_opts') nq(`nq') fit(`fit_list') group_var(`groupvar') ext_touse(`touse')
 			}
 		}
 		else {
