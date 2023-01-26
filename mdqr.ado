@@ -1,5 +1,6 @@
 *mdqr: minimum distance quantile regression
-*! version 0.0.6  19.01.2023  Blaise Melly
+*! version 0.0.7  19.01.2023  Blaise Melly
+*Estimation in Mata
 
 *To do (potentially): *(2) Covariance between coefficients are different quantiles (multi-variate GMM?)
 *(4) bootstrap all the quantiles together to obtain valid covariances.
@@ -7,7 +8,7 @@
 cap prog drop mdqr
 program mdqr, eclass byable(recall) sortpreserve
 	local stata_version = _caller() 
-	version 9.2
+	version 12
 *check that moremata is installed
 	capt findfile lmoremata.mlib
 	if _rc {
@@ -64,17 +65,17 @@ program mdqr, eclass byable(recall) sortpreserve
 			local exo ""
 		}
 		else {
-			if `stata_version' >= 11{
+*			if `stata_version' >= 11{
 				version 11.1: fvexpand `exo'
+				local exo `r(varlist)'
 				if "`r(fvops)'" == "true"{
 					local fvops = 1
-					local exo `r(varlist)'
 				}
-			}
+/*			}
 			else if "`exo'" != ""{ 
 				unab exo : `exo'
 				confirm numeric variable `exo'
-			}
+			}*/
 			gettoken away anything : anything, parse("(")
 		}
 *separate endogenous variables
@@ -83,16 +84,16 @@ program mdqr, eclass byable(recall) sortpreserve
 			local endo ""
 		}
 		else {
-			if `stata_version' >= 11{
+*			if `stata_version' >= 11{
 				version 11.1: fvexpand `endo'
 				if "`r(fvops)'" == "true"{
 					local fvops = 1
 					local endo `r(varlist)'
 				}
-			}
+/*			}
 			else if "`endo'" != ""{
 				confirm numeric variable `endo' 
-			}
+			}*/
 			gettoken away anything : anything, parse("=")
 		}
 *separate instruments		
@@ -101,16 +102,16 @@ program mdqr, eclass byable(recall) sortpreserve
 			local "`inst'" ""
 		}
 		else {
-			if `stata_version' >= 11{
+*			if `stata_version' >= 11{
 				version 11.1: fvexpand `inst'
 				if "`r(fvops)'" == "true"{
 					local fvops = 1
 					local inst `r(varlist)'
 				}
-			}
+/*			}
 			else if "`inst'" != ""{
 				confirm numeric variable `inst' 
-			}
+			}*/
 		}	
 *to deal with factor variables
 		if "`version'" != ""{
@@ -132,97 +133,69 @@ program mdqr, eclass byable(recall) sortpreserve
 		quiet gen `n_tv_var' = 1 if `touse'
 		quietly gen `test' = .	
 		quietly gen `temp' = .
-/*		if "`exo'" != ""{
-			quietly foreach v of local exo {
-				if strpos("`v'", "b.")==0{
-					if `fvops' == 1 & strpos("`v'", ".") > 0{
-							quietly replace `temp' = `v'
-							local v_unfactored `temp'
-						}
-						else{
-							local v_unfactored "`v'"
-					}
-				bysort `touse' `groupvar' (`v_unfactored') : replace `test' = (`v_unfactored'[1] == `v_unfactored'[_N]) if `touse'
-					su `test'  if `touse', meanonly
-					if r(min) == 0 {
-						local exo_tv "`exo_tv' `v'"
-						replace `n_tv_var' = `n_tv_var' + (1 - `test') if `touse'
-					}
-				}
-			}
-		}*/
 		local potentially_tv "`exo' `endo'"
-		if "`potentially_tv'" != ""{
-			local pastv ""
-			local factor = 0
-			foreach v of local potentially_tv {
-				if `fvops' == 1{
-					unopvarlist `v'
-					if "`v'" != "`r(varlist)'"{
-						local factor = `factor' + 1
-						local v `r(varlist)'
-						if "`v'" == "`pastv'"{						
-							quietly replace `n_tv_var' = `n_tv_var' + (1 - `test') if `touse'
-							continue
-						}
+*if factor variables:  generate temporary variables for the factors
+		if `fvops' {
+			`vv' _fv_check_depvar `dep'
+			`vv'  quiet _rmcoll `potentially_tv ' [`weight'`exp'] if `touse'
+			local potentially_tv "`r(varlist)'"
+			`vv' fvexpand `potentially_tv ' if `touse'
+			local varlistt "`r(varlist)'"
+			local potentially_tv  ""
+			local i=1
+			foreach vn of local varlistt{						
+				`vv' _ms_parse_parts `vn'
+				if ~`r(omit)'{
+					if r(type)=="variable"{
+						local potentially_tv  `potentially_tv ' `vn'
 					}
 					else{
-						local factor = 0
+						tempvar factor`i'
+						quiet gen `factor`i''=`vn' if `touse'
+						local potentially_tv  `potentially_tv ' `factor`i''
 					}
-					local pastv "`v'"
+					local i=`i'+1
 				}
+			}
+		}
+local tv "`potentially_tv'"		
+		/*
+*time-varying variables		
+		if "`potentially_tv'" != ""{
+*			local pastv ""
+*			local factor = 0
+*			foreach v of local potentially_tv {
+*				if `fvops' == 1{
+*					unopvarlist `v'
+*					if "`v'" != "`r(varlist)'"{
+*						local factor = `factor' + 1
+*						local v `r(varlist)'
+*						if "`v'" == "`pastv'"{						
+*							quietly replace `n_tv_var' = `n_tv_var' + (1 - `test') if `touse'
+*							continue
+*						}
+*					}
+*					else{
+*						local factor = 0
+*					}
+*					local pastv "`v'"
+*				}
+			foreach v of local potentially_tv {
 				quietly bysort `touse' `groupvar' (`v') : replace `test' = (`v'[1] == `v'[_N]) if `touse'
 				quietly su `test'  if `touse', meanonly
 				if r(min) == 0 {
-					if `factor' == 0{
-						local tv "`tv' `v'"
-					}
-					else{
-						local tv "`tv' i.`v'"
-					}
-					if `factor' != 1{
-						quietly replace `n_tv_var' = `n_tv_var' + (1 - `test') if `touse'			
-					}
+					local tv "`tv' `v'"
+					quietly replace `n_tv_var' = `n_tv_var' + (1 - `test') if `touse'			
 				}
 			}
 		}
-/*Identify time-varying endogenous variables.
-		if "`endo'" != "" {
-			quietly foreach v of local endo { 
-				if strpos("`v'", "b.")==0{
-					if `fvops' == 1 & strpos("`v'", ".") > 0{
-							quietly replace `temp' = `v'
-							local v_unfactored `temp'
-						}
-						else{
-							local v_unfactored "`v'"
-					}
-					bysort `touse' `groupvar' (`v_unfactored') : replace `test' = `v_unfactored'[1] == `v_unfactored'[_N] if `touse'
-					su `test'  if `touse', meanonly 
-					if r(min) == 0 {
-						local endo_tv "`endo_tv' `v'"
-						replace `n_tv_var' = `n_tv_var' + (1 - `test') if `touse'
-					} 	
-				}
-			}
-		}
-*/
+		
 		tempvar n_by_group new_touse group2
 		quiet egen  `n_by_group' = count(`touse'), by (`groupvar')
-		quiet gen `new_touse' = 1 if `n_by_group' >= `n_small' + `n_tv_var' & `touse'
-		quiet replace `new_touse' = 0 if `n_by_group' < `n_small' + min(`n_tv_var', 2) & `touse'
-		quietly egen `group2' = group(`group') if missing(`new_touse') & `touse'		
-		quietly su `group2' if missing(`new_touse') & `touse', meanonly
-		local ngroup = r(max)
-		forvalues i = 1/`ngroup' {
-			quietly `vv' reg `dep' `tv' if `group2' == `i' & `touse' [`weight'`exp'] 
-			if e(df_r) >= `n_small'{
-				quiet replace `new_touse' = 1 if `group2' == `i' & `touse'
-			}
-		}
-		quiet recode `new_touse' . = 0
-		quiet replace `touse' = `new_touse' * `touse'
+*		quiet gen `new_touse' = 1 if `n_by_group' >= `n_small' + `n_tv_var' & `touse'
+		quiet replace `touse' = 0 if `n_by_group' < `n_small' + min(`n_tv_var', 2)
 *we redo the group variable		
+*/
 		quiet drop `groupvar'
 		quietly egen `groupvar' = group(`group') if `touse'
 		quietly su `groupvar'  if `touse', meanonly
@@ -265,21 +238,21 @@ program mdqr, eclass byable(recall) sortpreserve
 				local est_command "regress"
 			}
 			else if wordcount("`endo'") == wordcount("`inst'") {
-				if `stata_version' < 10 {
+/*				if `stata_version' < 10 {
 					local est_command "ivreg "
 				}
-				else {
+				else {*/
 					local est_command "ivregress 2sls"
-				}
+*				}
 			}
 			else {
-				if `stata_version' < 10 {
+/*				if `stata_version' < 10 {
 					local est_command "ivreg2 "
 					local est_opts "`est_opts' gmm "
 				}
-				else {
+				else {*/
 					local est_command "ivregress gmm "
-				}
+*				}
 			}
 		}
 *VCE cannot be changed (to make sure that the s.e. are clustered!)
@@ -297,32 +270,25 @@ program mdqr, eclass byable(recall) sortpreserve
 		}		
 *weights
 		local isweight=("`exp'"!="")
-*number of observations
-		quietly sum `dep' if `touse'
-		local obs=r(N)
 *1st stage Estimation
 		if "`load_first'" == "" {
-			if "`parallel'" == ""{
-				forvalues i = 1/`ngroup' {		
-					capture `vv' qrprocess `dep' `tv' [`weight'`exp'] if `groupvar' == `i', vce(novar) quantile(`quantiles') noprint `qr_opts'
-					if _rc==0{
-						forvalues q = 1/`nq'{
-							quietly predict `fitted' if `groupvar' == `i', equation(#`q')
-							quietly replace `fit`q''=`fitted' if `groupvar' == `i'
-							quietly drop `fitted'
-						}
-					}
-					else{
-						replace `touse' = 0  if `groupvar' == `i'
-					}
-				}
+			forvalues q = 1/`nq'{
+				local fit_list "`fit_list' `fit`q''"
+			}
+*weights
+			if "`weight'"==""{
+				tempvar exp1
+				quietly gen byte `exp1' = 1 if `touse'
 			}
 			else{
-				forvalues q = 1/`nq'{
-					local fit_list "`fit_list' `fit`q''"
-				}
-				quietly sort `groupvar'
-				quietly parallel, by(`groupvar'): by `groupvar': par_qrprocess  `dep' `tv' [`weight'`exp'], command(`vv' qrprocess) opts(vce(novar) quantile(`quantiles') `qr_opts') nq(`nq') fit(`fit_list') group_var(`groupvar') ext_touse(`touse')
+				gettoken away exp1 : exp
+			}	
+			if "`parallel'" == ""{
+				mata: mdqr_fn("`dep'", "`tv'", "`exp1'", "`touse'", "`groupvar'", "`quants'", 0.9995, 0.00001, 100, "`fit_list'", `n_small')
+			}
+			else{
+				quietly sort `groupvar', stable
+				quietly parallel, by(`groupvar'): par_qrprocess,  dep(`dep') reg(`tv') weight(`exp1') touse(`touse') group(`groupvar') quantiles(`quantiles') fitted(`fit_list') n_small(`n_small')
 			}
 		}
 		else {
@@ -331,6 +297,9 @@ program mdqr, eclass byable(recall) sortpreserve
 				confirm numeric variable `fit`q''
 			}
 		}
+*number of observations
+		quietly sum `dep' if `touse'
+		local obs=r(N)
 *2nd stage estimation
 *If GMM, by default the cluster weighting matrix is used, if not overruled:
 		if "`est_command'"=="ivregress gmm" & strpos("`est_opts'","wmat")==0{
@@ -491,3 +460,165 @@ program mdqr, eclass byable(recall) sortpreserve
 		cap mata: mata drop mdqr_var_mat
 	}
 end
+
+cap mata mata drop mdqr_fn()
+version 12
+mata void mdqr_fn(string scalar dep, string scalar reg, string scalar weight, string scalar touse, string scalar group, string scalar quantile, real scalar beta, real scalar small, real scalar max_it, string scalar fitted, real scalar n_small)
+{
+	real colvector quants, y, w, uy
+	real rowvector conv, rdev, mdev
+	string rowvector reg1
+	real matrix x, coef, cov
+	real scalar alpha, i, n
+	quants = st_matrix(quantile)
+	nq = rows(quants)
+	y = st_data(., dep, touse)
+	n = rows(y)
+	int_touse = J(n, 1, 1)
+	reg1 = tokens(reg)
+	if(length(reg1) > 0) x = J(n, 1, 1), st_data(., reg1, touse)
+	else x = J(n, 1, 1)
+	k = cols(x)
+	w = st_data(., weight, touse)
+	g = st_data(., group, touse)	
+	fit = J(n, nq, .)
+	ngroup = max(g)
+	conv = 0
+	coef = 0
+	for(i = 1; i <= ngroup; i++){
+		temp_g = my_selectindex(g :== i)
+		if(rows(temp_g) < n_small+1){
+			int_touse[temp_g] = J(rows(temp_g), 1, 0)
+		}
+		else{
+			temp_x_all = x[temp_g, ]
+			temp_minmax = colminmax(temp_x_all[, (2..k)])
+			select_var = (1, select(2..k, temp_minmax[1,] :< temp_minmax[2,]))	
+			hqrdp(temp_x_all[, select_var], temp1=., temp2=., temp3=., p = (1, J(1, cols(select_var)-1, 0)))	
+			temp_x = temp_x_all[, select_var][, p[1..sum(abs(diagonal(temp3)):>10^(-9))]]
+			if(rows(temp_x) - cols(temp_x) < n_small){
+				int_touse[temp_g] = J(rows(temp_x), 1, 0)
+			}
+			else{
+				temp_y = y[temp_g]
+				temp_w = w[temp_g]
+				for (q = 1; q <= rows(quants); q++) {			
+					if(q==1) coef=0			
+					coef = int_fnm(temp_y, temp_x, temp_w, quants[q, 1], beta, small, max_it, conv, coef)
+					if(colmissing(coef) | conv==0){	
+						stata("_qreg "+dep+" "+reg+" if "+group+"=="+strofreal(i)+" [aweight="+weight+"], quantile("+strofreal(quants[q,1])+")", 1)			
+						coef=st_matrix("e(b)")'
+						coef=coef[(rows(coef), 1..(rows(coef)-1)), 1]						
+						fit[temp_g, q] = temp_x_all * coef
+						coef=0
+					}
+					else{
+						fit[temp_g, q] = temp_x * coef
+					}
+				}
+			}
+		}	
+	}
+	st_store(., tokens(fitted), touse, fit)
+	st_store(., touse, touse, int_touse)
+}
+
+cap mata mata drop int_fnm()
+version 12
+mata real colvector int_fnm(real colvector dep, real matrix X, real colvector wei, real scalar p, real scalar beta, real scalar small, real scalar max_it, real scalar convergence, real colvector start)
+{
+	real colvector weight, c, b, x, s, y, r, z, w, q, rhs, dy, dx, ds, dz, dw, fx, fs, fw, fz, fp, fd, dxdz, dsdw, xinv, sinv, xi
+	real scalar n, gap, it, mu, g
+	real matrix A, AQ, invAQ
+	weight=wei:/mean(wei)
+	n=rows(X)
+	A=(X:*weight)
+	c=-(dep:*weight)
+	b=colsum(A):*(1-p)
+	x=J(n,1,1-p)
+	s=J(n,1,p)
+	if(start==0){
+		y = (invsym(cross(A, A))*cross(A,c))
+		y[cols(X)]=y[cols(X)]+mm_quantile(c - cross(A' , y),1,p)
+	}
+	else{
+		y=start
+	}
+	r = c - cross(A' , y)
+	r = r + 0.001 * (r :== 0)
+	z = r :* (r :> 0)
+	w = z - r
+	it = 0
+	while(it < max_it){
+    	it = it + 1
+    	q=1:/(z:/x+w:/s)
+    	r = z - w
+		AQ = A:*sqrt(q)
+		rhs=r:*sqrt(q)
+		invAQ=invsym(cross(AQ, AQ))
+		dy = invAQ*cross(AQ,rhs)
+		dx = q :* (A*dy - r)    
+		ds = -dx
+		dz = -z :* (1 :+ dx:/x)
+		dw = -w :* (1 :+ ds:/s)
+		fx = bound(x, dx)
+		fs = bound(s, ds)
+		fw = bound(w, dw)
+		fz = bound(z, dz)
+		fp = rowmin((fx, fs))
+		fd = colmin((fw, fz))
+		fp = min((beta * fp\ 1))
+		fd = min((beta * fd, 1))
+		if(min((fp, fd)) < 1){
+			mu = z ' x + w ' s
+			g = (z + fd * dz) ' (x + fp * dx) + (w + fd * dw) ' (s + fp * ds)
+			mu = mu * (g / mu) ^3 / ( 2* n)
+			dxdz = dx :* dz
+			dsdw = ds :* dw
+			xinv = 1 :/ x
+			sinv = 1 :/ s
+			xi = mu * (xinv - sinv)
+			rhs = rhs + sqrt(q):*(dxdz - dsdw :- xi)
+			dy = invAQ*cross(AQ,rhs)
+			dx = q :* (A*dy  - r -dxdz + dsdw:+ xi)
+			ds = -dx
+			dz = mu * xinv - z - xinv :* z :* dx - dxdz
+			dw = mu * sinv - w - sinv :* w :* ds - dsdw
+ 			fx = bound(x, dx)
+			fs = bound(s, ds)
+			fw = bound(w, dw)
+			fz = bound(z, dz)
+			fp = rowmin((fx, fs))
+			fd = colmin((fw, fz))
+			fp = min((beta * fp\ 1))
+			fd = min((beta * fd, 1))
+		}  
+		x = x + fp * dx
+		s = s + fp * ds
+		gap=fd * dy
+		y = y + gap
+		if(max(abs(gap)) < small){
+			if(c'x-b*y+sum(w)<small){
+				break
+			}
+		}
+		w = w + fd * dw
+		z = z + fd * dz
+	}
+	convergence=(it < max_it)
+	return(-y)
+}
+
+cap mata mata drop bound()
+version 12
+mata real colvector bound(real colvector x, real colvector dx)
+{
+	real colvector b, f
+	f=(dx:>=0)
+	b=f:*1e20-(1:-f):*x:/dx
+	return(b)
+}
+
+cap mata mata drop my_selectindex()
+version 12
+mata real colvector my_selectindex(real colvector input) return(select((1..rows(input))', input))
