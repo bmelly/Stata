@@ -1,3 +1,4 @@
+*Version 1.0.0 01mar2023
 *Codes implementing the estimators proposed in Chernozhukov, Fernandez-Val and Melly
 *Codes for QTE, pointwise and uniform confidence intervals based on bootstrap and Kolmogorov-Smirnov statistic
 
@@ -19,7 +20,7 @@ program counterfactual, eclass
 		ereturn display, level(`level')
  	}
 	else {
-		syntax varlist [if] [in] [pweight/], [Group(varname) Counterfactual(varlist) Method(string) QLow(real 0.1) QHigh(real 0.9) QStep(real 0.1) Quantiles(string) NReg(real 100) Reps(integer 100) Level(cilevel) First(real 0.1) Last(real 0.9) noboot noprint SCale(varlist) counterscale(varlist) SAVing(string) CONS_test(string) beta(real 0.9995) small(real 0.00001) max_it(real 50) Censoring(varname) Firstc(real 0.1) Secondc(real 0.05) NSteps(integer 3) RIght est_opts(string)]
+		syntax varlist [if] [in] [pweight/], [Group(varname) Counterfactual(varlist) Method(string) QLow(real 0.1) QHigh(real 0.9) QStep(real 0.1) Quantiles(numlist >0 <1 sort) NReg(real 100) Reps(integer 100) Level(cilevel) First(real 0.1) Last(real 0.9) noboot noprint SCale(varlist) counterscale(varlist) SAVing(string) CONS_test(string) beta(real 0.9995) small(real 0.00001) max_it(real 50) Censoring(varname) Firstc(real 0.1) Secondc(real 0.05) NSteps(integer 3) RIght est_opts(string)]
 		local nreg=round(`nreg')
 		if `nreg'<1{
 			dis as error "The option nreg must be a strictly positive integer."
@@ -434,7 +435,7 @@ mata void ev_boot(numeric matrix qte_cov_booti, numeric rowvector qte_cov_def, n
 *Generic function, counterfactual distribution using group==0 to estimate and group==1 to predict
 program qte_cov_int, rclas
 	version 9.2
-	syntax varlist [if] [in] [pweight/] , [Group(varname) Counterfactual(varlist)  Method(string)  QLow(real 0.1) QHigh(real 0.9) QStep(real 0.1) Quantiles(string) NReg(real 100) scale(varlist) counterscale(varlist) beta(real 0.9995) small(real 0.00001) max_it(real 50) Censoring(varname) Firstc(real 0.1) Secondc(real 0.05) NSteps(integer 3) right est_opts(string)] 
+	syntax varlist [if] [in] [pweight/] , [Group(varname) Counterfactual(varlist)  Method(string)  QLow(real 0.1) QHigh(real 0.9) QStep(real 0.1) Quantiles(numlist >0 <1 sort) NReg(real 100) scale(varlist) counterscale(varlist) beta(real 0.9995) small(real 0.00001) max_it(real 50) Censoring(varname) Firstc(real 0.1) Secondc(real 0.05) NSteps(integer 3) right est_opts(string)] 
 		marksample touse
 		markout `touse' `counterfactual' `group'
 		tempname quants results obs0 obsc obs
@@ -465,12 +466,10 @@ program qte_cov_int, rclas
 		}
 *if the quantiles have been given directly: check that they are numbers and between 0 and 1 (or between 1 and 100)
 		else{
-			SetQ `quantiles'
-			local quantiles="`r(quants)'"
 			tokenize "`quantiles'", parse(" ")
 			local i=1
 			while "`1'" != "" {
-				matrix `quants'=nullmat(`quants')\(`1')
+				matrix `quants'= nullmat(`quants') \ (`1')
 				mac shift 
 				local i=`i'+1
 			}
@@ -670,20 +669,6 @@ mata real cleandist(real matrix v){
 	return(v)
 }
 
-* Rearrangement (due to Chernozhukov et al), alternative for insertionsort function 
-mata real rearrange(real colvector v){
-	n = rows(v)
-	F = J(n,1,0)
-	vs = J(n,1,0)
-	for( i=1 ; i<=n ; i++ ){
-		F[i] = colsum(v :<= v[i])
-	}
-	for( i=1 ; i<=n ; i++ ){
-		vs[i] = colmin(select(v,F:>=i))
-	}
-	return(vs)
-}
-
 mata:
 numeric getquantile(numeric colvector y, numeric colvector F, numeric colvector TAU_)
 {
@@ -697,10 +682,6 @@ numeric getquantile(numeric colvector y, numeric colvector F, numeric colvector 
 }
 end
 
-*Mata, logistic distribution
-version 9.2
-mata real logisticcdf(x) return(1:/(1:+exp(-x)))
-
 *Mata function doing the unconditional estimation using logit, probit or lpm
 version 9.2
 mata numeric matrix distpred(string scalar quants,string scalar varlist,string scalar weights,string scalar touse,numeric matrix Coef1,method)
@@ -711,11 +692,11 @@ mata numeric matrix distpred(string scalar quants,string scalar varlist,string s
 	ys=Coef1[1,.]
 	Coef=Coef1[2..rows(Coef1),1..(cols(Coef1)-1)]
 	Pred=cross(Reg'\J(1,rows(Reg),1),Coef)
-	if(method==1) Pred=logisticcdf(Pred)
+	if(method==1) Pred=invlogit(Pred)
 	if(method==2) Pred=normal(Pred)
 //	if(method==3) Pred=cleandist(Pred)
 	Pred=mean(Pred,Wei)'\1
-	Pred=rearrange(Pred)
+	Pred=sort(Pred, 1)
 	RQ_deco_ReT=getquantile(ys',Pred,Quants)
 	return(RQ_deco_ReT')
 }
@@ -1016,7 +997,7 @@ mata numeric matrix est_cqrl(numeric colvector y, numeric colvector c, numeric m
 	st_store(.,idx,touse,ncensored)
 	stata("logit "+st_varname(idx)+" "+reg+" [iweight="+weight+"] if "+touse+"==1",1)
 	temp=st_matrix("e(b)")'
-	pred=logisticcdf(x*temp)
+	pred=invlogit(x*temp)
 	nq=rows(quants)
 	coef=J(cols(x),nq,.)
 	for(i=1; i<=nq; i++) {
@@ -1037,41 +1018,3 @@ mata numeric matrix est_cqrl(numeric colvector y, numeric colvector c, numeric m
 	coef=quants'\coef
 	return(coef)
 }
-
-*Programs taken from sqreg to check that the inputed quantiles make sense
-program define SetQ, rclass
-	local orig "`*'"
-	tokenize "`*'", parse(" ,")
-	while "`1'" != "" {
-		FixNumb "`orig'" `1'
-		ret local quants "`return(quants)' `r(q)'"
-		mac shift 
-		if "`1'"=="," {
-			mac shift
-		}
-	}
-end
-
-program define FixNumb , rclass
-	local orig "`1'"
-	mac shift
-	capture confirm number `1'
-	if _rc {
-		Invalid "`orig'" "`1' not a number"
-	}
-	if `1' >= 1 {
-		ret local q = `1'/100
-	}
-	else 	ret local q `1'
-	if `return(q)'<=0 | `return(q)'>=1 {
-		Invalid "`orig'" "`return(q)' out of range"
-	}
-end
-
-program define Invalid
-	di in red "quantiles(`1') invalid"
-	if "`2'" != "" {
-		di in red "`2'"
-	}
-	exit 198
-end

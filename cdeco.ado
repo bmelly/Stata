@@ -1,4 +1,4 @@
-*Version 1.0.1 03aug2022
+*Version 1.0.2 01mar2023
 *Codes implementing the estimators proposed in Chernozhukov, Fernandez-Val and Melly
 *Codes for QTE, pointwise and uniform confidence intervals based on bootstrap and Kolmogorov-Smirnov statistic
 
@@ -149,24 +149,24 @@ program cdeco, eclass
 				capture `vv' cdeco_int `dep' `varlist' `if' `in' [pweight=`exp'], group(`group') method(`method') quantiles(`quantiles') nreg(`nreg') scale(`scale') beta(`beta') small(`small') max_it(`max_it') censoring(`censoring') firstc(`firstc') secondc(`secondc') nsteps(`nsteps') `right' est_opts(`est_opts')
 				if _rc == 0 {
 					mata: qte_cov_boot=qte_cov_boot\(qte_cov_obs0,qte_cov_obs1,qte_cov_fitted0,qte_cov_fitted1,qte_cov_counter)
-					if round(`i'/`every')==(`i'/`every'){
-						drop _all
-						mata: st_addobs(rows(qte_cov_boot))
-						mata: idx = st_addvar(st_local("double"), st_tempname(cols(qte_cov_boot)))
-						mata: st_store(.,idx,qte_cov_boot)
-						if `i'==1{	
-							quietly save `saving', `replace'
-						}
-						else{ 
-							quietly save `saving', replace
-						}
-					}
-					restore, preserve
 					di in gr "." _c
 				}
 				else {
 					dis in red "x" _continue
 				}
+				if round(`i'/`every')==(`i'/`every'){
+					drop _all
+					mata: st_addobs(rows(qte_cov_boot))
+					mata: idx = st_addvar(st_local("double"), st_tempname(cols(qte_cov_boot)))
+					mata: st_store(.,idx,qte_cov_boot)
+					if `i'==1{	
+						quietly save `saving', `replace'
+					}
+					else{ 
+						quietly save `saving', replace
+					}
+				}
+				restore, preserve
 			}
 			set more `actual_more'
 			di in gr ")"		
@@ -732,22 +732,6 @@ mata real cleandist(real matrix v){
 	return(v)
 }
 
-* Rearrangement (due to Chernozhukov et al), alternative for insertionsort function 
-mata real rearrange(real colvector v){
-	real scalar n, i
-	real colvector F, vs
-	n = rows(v)
-	F = J(n,1,0)
-	vs = J(n,1,0)
-	for( i=1 ; i<=n ; i++ ){
-		F[i] = colsum(v :<= v[i])
-	}
-	for( i=1 ; i<=n ; i++ ){
-		vs[i] = colmin(select(v,F:>=i))
-	}
-	return(vs)
-}
-
 mata:
 real getquantile(real colvector y, real colvector F, real colvector TAU_)
 {
@@ -763,10 +747,6 @@ real getquantile(real colvector y, real colvector F, real colvector TAU_)
 }
 end
 
-*Mata, logistic distribution
-version 9.2
-mata real logisticcdf(x) return(1:/(1:+exp(-x)))
-
 *Mata function doing the unconditional estimation using logit, probit or lpm
 version 9.2
 mata real matrix distpred(string scalar quants,string scalar varlist,string scalar weights,string scalar touse,real matrix Coef1, string scalar method)
@@ -780,11 +760,11 @@ mata real matrix distpred(string scalar quants,string scalar varlist,string scal
 	ys=Coef1[1,.]
 	Coef=Coef1[2..rows(Coef1),1..(cols(Coef1)-1)]
 	Pred=cross(Reg'\J(1,rows(Reg),1),Coef)
-	if(method== "logit") Pred=logisticcdf(Pred)
+	if(method== "logit") Pred=invlogit(Pred)
 	if(method== "probit") Pred=normal(Pred)
 	if( method == "cloglog") Pred = 1 :- exp(-exp(Pred))
 	Pred=mean(Pred,Wei)'\1
-	Pred=rearrange(Pred)
+	Pred=sort(Pred, 1)
 	RQ_deco_ReT=getquantile(ys',Pred,Quants)
 	return(RQ_deco_ReT')
 }
@@ -1000,7 +980,7 @@ mata real matrix est_cqrl(real colvector y, real colvector c, real matrix x, rea
 	st_store(.,idx,touse,ncensored)
 	stata("logit "+st_varname(idx)+" "+reg+" [iweight="+weight+"] if "+touse+"==1, asis",1)
 	temp=st_matrix("e(b)")'
-	pred=logisticcdf(x*temp)
+	pred=invlogit(x*temp)
 	nq=rows(quants)
 	coef=J(cols(x),nq,.)
 	for(i=1; i<=nq; i++) {

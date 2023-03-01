@@ -1,4 +1,4 @@
-*Version 1.0.2 03aug2022
+*Version 1.0.3 01mar2023
 
 program cdeco_jmp, eclass
 	version 9.2
@@ -125,8 +125,14 @@ program cdeco_jmp, eclass
 		di in gr "(bootstrapping " _c
 		forvalues i=1/`reps'{
 			bsample
-			cdeco_int `dep' `varlist' `if' `in' [pweight=`exp'], group(`group') method(`method') quantiles(`quantiles') nreg(`nreg') scale(`scale') beta(`beta') small(`small') max_it(`max_it') censoring(`censoring') firstc(`firstc') secondc(`secondc') nsteps(`nsteps') `right'  est_opts(`est_opts')
-			mata: qte_cov_boot=qte_cov_boot\(qte_cov_obs0,qte_cov_obs1,qte_cov_fitted0,qte_cov_fitted1,qte_cov_counter1,qte_cov_counter2)
+			capture cdeco_int `dep' `varlist' `if' `in' [pweight=`exp'], group(`group') method(`method') quantiles(`quantiles') nreg(`nreg') scale(`scale') beta(`beta') small(`small') max_it(`max_it') censoring(`censoring') firstc(`firstc') secondc(`secondc') nsteps(`nsteps') `right'  est_opts(`est_opts')
+			if _rc == 0 {
+				mata: qte_cov_boot=qte_cov_boot\(qte_cov_obs0,qte_cov_obs1,qte_cov_fitted0,qte_cov_fitted1,qte_cov_counter1,qte_cov_counter2)
+				di in gr "." _c
+			}
+			else{
+				dis in red "x" _continue
+			}
 			if round(`i'/`every')==(`i'/`every'){
 				drop _all
 				mata: st_addobs(rows(qte_cov_boot))
@@ -140,7 +146,6 @@ program cdeco_jmp, eclass
 				}
 			}
 			restore, preserve
-			di in gr "." _c
 		}
 		set more `actual_more'
 		di in gr ")"
@@ -852,10 +857,6 @@ mata real matrix est_cqr(string scalar dep, string scalar censoring, string scal
 	return(coef)
 }
 
-*Mata, logistic distribution
-version 9.2
-mata real logisticcdf(x) return(1:/(1:+exp(-x)))
-
 mata real matrix est_cqrl(real colvector y, real colvector c, real matrix x, real colvector w, real colvector quants, real scalar c1, real scalar c2, real scalar nsteps, real scalar beta, real scalar small, real scalar max_it, string scalar dep, string scalar reg, string scalar weight, string scalar touse)
 {
 	coef=J(cols(x)+1,rows(quants),.)
@@ -865,7 +866,7 @@ mata real matrix est_cqrl(real colvector y, real colvector c, real matrix x, rea
 	st_store(.,idx,touse,ncensored)
 	stata("logit "+st_varname(idx)+" "+reg+" [iweight="+weight+"] if "+touse+"==1, asis",1)
 	temp=st_matrix("e(b)")'
-	pred=logisticcdf(x*temp)
+	pred=invlogit(x*temp)
 	nq=rows(quants)
 	for(i=1; i<=nq; i++) {
 		delta1=mm_quantile(select(pred,pred:>(1-quants[i])),select(w,pred:>(1-quants[i])),c1)
