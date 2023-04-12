@@ -1,5 +1,5 @@
 *qrprocess: quantile regression process
-*! version 1.1.2  29.05.2021  Blaise Melly
+*! version 1.1.3  12.04.2023  Blaise Melly
 
 program qrprocess, eclass byable(recall) sortpreserve
 	version 9.2
@@ -1130,6 +1130,8 @@ mata void rq_pqreg(string scalar dep, string scalar reg, string scalar weight_ty
 	}
 	else{
 		w=st_data(.,weight,touse)
+		stata("recast double "+weight)
+		stata("recast double "+reg)
 //add two pseudo observations
 		st_addobs(2)
 		n_obs_data=st_nobs()
@@ -1630,6 +1632,8 @@ mata void rq_proqreg(string scalar dep, string scalar reg, string scalar weight_
 	else m=1000
 	conv=rdev=mdev=J(1,rows(quants),.)
 	w=st_data(.,index_weight,index_touse)
+	stata("recast double "+weight)
+	stata("recast double "+reg)
 	coef=J(k,nq,.)
 	minmaxy=minmax(y)
 	miny=2*minmaxy[1]-minmaxy[2]
