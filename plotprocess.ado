@@ -15,7 +15,7 @@ program plotprocess
 			error 332
 		}
 	}
-	syntax [anything(name=namelist)] [, Pointwise Uniform Both None lcolor(string) ucolor(string) pcolor(string) legend(string) ytitle(string) xtitle(string) title(string) OTHER_graph_options(string) COMBINE_options(string) Level(string) compare(string) compare_ci compare_color(string)]
+	syntax [anything(name=namelist)] [, Pointwise Uniform Both None lcolor(string) ucolor(string) pcolor(string) ufcolor(string) pfcolor(string) legend(string) ytitle(string) xtitle(string) title(string) OTHER_graph_options(string) COMBINE_options(string) Level(string) compare(string) compare_ci compare_color(string)]
 	local fvops = "`s(fvops)'" == "true" & _caller() >= 11
 	if `fvops' {
 		local vv: di "version " string(max(11,_caller())) ", missing: " 
@@ -79,9 +79,15 @@ program plotprocess
 	if "`pcolor'"==""{
 		local pcolor "gs8"
 	}	
+	if "`pfcolor'"==""{
+		local pfcolor "`pcolor'"
+	}
 	if "`ucolor'"==""{
 		local ucolor "gs13"
-	}	
+	}
+	if "`ufcolor'"==""{
+		local ufcolor "`ucolor'"
+	}
 	local nq=rowsof(`quantile')
 	quiet svmat `quantile', name(`quantiles')
 	mata: PlotProcessCoeF = st_matrix("e(b)")'
@@ -171,11 +177,11 @@ program plotprocess
 		mata: st_store((1..`nq')', "`coef'", PlotProcessCoeF[PlotProcessSelecT,1])
 		if "`pointwise'"=="pointwise"{
 			mata: st_store((1..`nq')', ("`pointl'", "`pointu'"), PlotProcessPoinT[PlotProcessSelecT,.])
-			local pointgraph "(rarea `pointl' `pointu' `quantiles', fcolor(`pcolor') lcolor(`pcolor'))"
+			local pointgraph "(rarea `pointl' `pointu' `quantiles'1, fcolor(`pfcolor') lcolor(`pcolor'))"
 		}
 		if "`uniform'"=="uniform"{
 			mata: st_store((1..`nq')', ("`unifl'", "`unifu'"), PlotProcessUniF[PlotProcessSelecT,.])
-			local unifgraph "(rarea `unifl' `unifu' `quantiles', fcolor(`ucolor') lcolor(`ucolor'))"
+			local unifgraph "(rarea `unifl' `unifu' `quantiles'1, fcolor(`ufcolor') lcolor(`ucolor'))"
 		}
 		if "`different_titles'"=="diff"{
 			local temptitle `title`i''
@@ -210,14 +216,14 @@ program plotprocess
 			local ols_lb = _b[`temp_var']+invnormal((100-`level')/200)*_se[`temp_var']
 			local ols_ub = _b[`temp_var']+invnormal(1-(100-`level')/200)*_se[`temp_var']
 			local olscigraph "(scatteri `ols_lb' 0 `ols_lb' 1, recast(line) lcolor(`compare_color') lpattern(dash)) (scatteri `ols_ub' 0 `ols_ub' 1, recast(line) lcolor(`compare_color') lpattern(dash))"
-		}
+		}	
 		if `kplot'==1{
-			twoway `unifgraph' `pointgraph' (line `coef' `quantiles', lcolor(`lcolor')) `olsgraph' `olscigraph', ytitle("`ytitle'") xtitle("`xtitle'") title("`temptitle'") legend(`legend') `other_graph_options'
+			twoway `unifgraph' `pointgraph' (line `coef' `quantiles'1, lcolor(`lcolor')) `olsgraph' `olscigraph', ytitle("`ytitle'") xtitle("`xtitle'") title("`temptitle'") legend(`legend') `other_graph_options'
 		}
 		else{
 			tempname graph`i'
 			local graphcombine "`graphcombine' `graph`i''"
-			twoway `unifgraph' `pointgraph' (line `coef' `quantiles', lcolor(`lcolor')) `olsgraph' `olscigraph', ytitle("`ytitle'") xtitle("`xtitle'") title("`temptitle'") legend(`legend') `other_graph_options' nodraw name(`graph`i'')
+			twoway `unifgraph' `pointgraph' (line `coef' `quantiles'1, lcolor(`lcolor')) `olsgraph' `olscigraph', ytitle("`ytitle'") xtitle("`xtitle'") title("`temptitle'") legend(`legend') `other_graph_options' nodraw name(`graph`i'')
 		}
 	}
 	if `kplot'>1{
