@@ -447,7 +447,6 @@ program qrprocess, eclass byable(recall) sortpreserve
 		mat rownames `quants' = `ueqnams'
 		mat colnames `quants' = "tau"
 		ereturn matrix quantiles `quants'
-		ereturn local estat_cmd "qrprocess_estat"
 		ereturn local predict "qrprocess_p"
 		if "`bofinger'"=="" & "`variance'"=="kernel" ereturn local bwmethod "hsheather"
 		else if "`variance'"=="kernel" ereturn local bwmethod "bofinger"
