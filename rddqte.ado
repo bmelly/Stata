@@ -387,11 +387,11 @@ mata void rddint(string scalar dep, string scalar treat, string scalar touse, st
 	lte[.,3]=lor1
 	lte[.,5]=lor1:-lor0
 	dispersion=J(6,6,.)
-	q10=sum(quants:<=0.1)
-	q25=sum(quants:<=0.25)
-	q50=sum(quants:<=0.5)
-	q75=sum(quants:<=0.75)
-	q90=sum(quants:<=0.9)
+	q10 = max(1 \ sum(quants:<=0.1))
+	q25 = max(1 \ sum(quants:<=0.25))
+	q50 = max(1 \ sum(quants:<=0.5))
+	q75 = max(1 \ sum(quants:<=0.75))
+	q90 = max(1 \ sum(quants:<=0.9))
 	dispersion[1,1]=mean(q0)
 	dispersion[1,3]=mean(q1)
 	dispersion[1,5]=dispersion[1,3]-dispersion[1,1]
@@ -617,11 +617,11 @@ mata void rddint2(string scalar props, string scalar dep, string scalar treat, s
 	lte[.,3]=lor1
 	lte[.,5]=lor1:-lor0
 	dispersion=J(6,6,.)
-	q10=sum(quants:<=0.1)
-	q25=sum(quants:<=0.25)
-	q50=sum(quants:<=0.5)
-	q75=sum(quants:<=0.75)
-	q90=sum(quants:<=0.9)
+	q10 = max(1 \ sum(quants:<=0.1))
+	q25 = max(1 \ sum(quants:<=0.25))
+	q50 = max(1 \ sum(quants:<=0.5))
+	q75 = max(1 \ sum(quants:<=0.75))
+	q90 = max(1 \ sum(quants:<=0.9))
 	dispersion[1,1]=mean(q0)
 	dispersion[1,3]=mean(q1)
 	dispersion[1,5]=dispersion[1,3]-dispersion[1,1]
